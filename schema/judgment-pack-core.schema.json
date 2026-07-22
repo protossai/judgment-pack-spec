@@ -1,0 +1,535 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/protossai/judgment-pack-spec/main/schema/judgment-pack-core.schema.json",
+  "title": "Judgment Pack Core",
+  "description": "Research-preview structural schema. Conformance does not establish truth, authority, safety, or operational fitness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "id",
+    "version",
+    "title",
+    "decision",
+    "outcomes",
+    "rules"
+  ],
+  "properties": {
+    "specVersion": {
+      "const": "0.1.0-draft"
+    },
+    "id": {
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "title": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "description": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "decision": {
+      "$ref": "#/$defs/decision"
+    },
+    "applicability": {
+      "$ref": "#/$defs/condition"
+    },
+    "evidenceRequirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidenceRequirement"
+      },
+      "uniqueItems": true
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      },
+      "uniqueItems": true
+    },
+    "outcomes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/outcome"
+      },
+      "uniqueItems": true
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "uniqueItems": true
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exception"
+      },
+      "uniqueItems": true
+    },
+    "fallbackOutcome": {
+      "$ref": "#/$defs/localId"
+    },
+    "escalation": {
+      "$ref": "#/$defs/escalation"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "extensions": {
+      "$ref": "#/$defs/extensions"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "localId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "decimalString": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(?!org\\.judgmentpack\\.)[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9-]*)+$"
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "question"],
+      "properties": {
+        "intent": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "question": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "evidenceRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "required"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": ["document", "fact", "measurement", "attestation"]
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "locator"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publisher": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date"
+        },
+        "locator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {
+              "enum": ["uri", "repository", "path", "other"]
+            },
+            "value": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "citation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["location", "excerpt"],
+          "properties": {
+            "location": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "excerpt": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "rights": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "label": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "when", "outcome", "onUnknown"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "when": {
+          "$ref": "#/$defs/condition"
+        },
+        "outcome": {
+          "$ref": "#/$defs/localId"
+        },
+        "onUnknown": {
+          "enum": ["ignore", "escalate"]
+        },
+        "evidenceRequirementRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/localId"
+          },
+          "uniqueItems": true
+        },
+        "sourceRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/localId"
+          },
+          "uniqueItems": true
+        },
+        "rationale": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "when", "effect", "onUnknown"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "when": {
+          "$ref": "#/$defs/condition"
+        },
+        "effect": {
+          "enum": ["suppress-rule", "force-outcome", "escalate"]
+        },
+        "targetRule": {
+          "$ref": "#/$defs/localId"
+        },
+        "outcome": {
+          "$ref": "#/$defs/localId"
+        },
+        "onUnknown": {
+          "enum": ["ignore", "escalate"]
+        },
+        "sourceRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/localId"
+          },
+          "uniqueItems": true
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "effect": {
+                "const": "suppress-rule"
+              }
+            },
+            "required": ["effect"]
+          },
+          "then": {
+            "required": ["targetRule"],
+            "not": {
+              "required": ["outcome"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect": {
+                "const": "force-outcome"
+              }
+            },
+            "required": ["effect"]
+          },
+          "then": {
+            "required": ["outcome"],
+            "not": {
+              "required": ["targetRule"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect": {
+                "const": "escalate"
+              }
+            },
+            "required": ["effect"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["outcome"] },
+                { "required": ["targetRule"] }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["triggers", "target"],
+      "properties": {
+        "triggers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "not-applicable",
+              "missing-required-evidence",
+              "unknown",
+              "conflict",
+              "no-match"
+            ]
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": {
+              "enum": ["human-role", "queue", "system"]
+            },
+            "name": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "message": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "uniqueItems": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "license": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "requiredExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!org\\.judgmentpack\\.)[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9-]*)+$"
+          },
+          "uniqueItems": true
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reviewer", "reviewedAt", "disposition"],
+            "properties": {
+              "reviewer": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "reviewedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "disposition": {
+                "enum": ["approved", "changes-requested", "rejected"]
+              },
+              "note": {
+                "$ref": "#/$defs/nonEmptyString"
+              }
+            }
+          }
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": {
+              "const": "literal"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "conditions"],
+          "properties": {
+            "op": {
+              "enum": ["all", "any"]
+            },
+            "conditions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "condition"],
+          "properties": {
+            "op": {
+              "const": "not"
+            },
+            "condition": {
+              "$ref": "#/$defs/condition"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "path", "operator", "value"],
+          "properties": {
+            "op": {
+              "const": "fact"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(?:/(?:[^~/]|~0|~1)*)*$"
+            },
+            "operator": {
+              "enum": [
+                "equals",
+                "not-equals",
+                "greater-than",
+                "greater-than-or-equal",
+                "less-than",
+                "less-than-or-equal",
+                "in"
+              ]
+            },
+            "value": true
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "evidenceRequirement"],
+          "properties": {
+            "op": {
+              "const": "evidence-present"
+            },
+            "evidenceRequirement": {
+              "$ref": "#/$defs/localId"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

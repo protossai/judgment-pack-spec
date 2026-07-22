@@ -1,0 +1,30 @@
+{
+  "suiteVersion": "0.1.0-draft",
+  "status": "research-preview",
+  "cases": [
+    {
+      "id": "valid-minimal-expense-approval",
+      "path": "valid/minimal-expense-approval.json",
+      "expected": "valid",
+      "focus": "complete structural example"
+    },
+    {
+      "id": "invalid-missing-decision",
+      "path": "invalid/missing-decision.json",
+      "expected": "invalid",
+      "focus": "required root member"
+    },
+    {
+      "id": "invalid-unknown-root-member",
+      "path": "invalid/unknown-root-member.json",
+      "expected": "invalid",
+      "focus": "closed root object"
+    },
+    {
+      "id": "invalid-unqualified-extension",
+      "path": "invalid/unqualified-extension.json",
+      "expected": "invalid",
+      "focus": "reverse-domain extension namespace"
+    }
+  ]
+}

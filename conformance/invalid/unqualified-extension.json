@@ -1,0 +1,172 @@
+{
+  "specVersion": "0.1.0-draft",
+  "id": "https://example.com/judgment-packs/expense-approval",
+  "version": "0.1.0",
+  "title": "Expense approval",
+  "description": "Research example for deciding whether an employee expense may be automatically approved.",
+  "decision": {
+    "intent": "Determine whether an employee expense may be automatically approved, rejected, or sent to a human reviewer.",
+    "question": "What approval path should this expense follow?"
+  },
+  "applicability": {
+    "op": "fact",
+    "path": "/expense/type",
+    "operator": "equals",
+    "value": "employee-expense"
+  },
+  "evidenceRequirements": [
+    {
+      "id": "receipt",
+      "description": "An itemized receipt for the expense.",
+      "required": true,
+      "kind": "document"
+    },
+    {
+      "id": "cost-center",
+      "description": "A valid cost-center identifier.",
+      "required": true,
+      "kind": "fact"
+    }
+  ],
+  "sources": [
+    {
+      "id": "expense-policy",
+      "title": "Example expense policy",
+      "publisher": "Example Corporation",
+      "publishedAt": "2026-01-15",
+      "locator": {
+        "kind": "uri",
+        "value": "https://example.com/policies/expenses"
+      },
+      "citation": {
+        "location": "Section 4 — approval thresholds",
+        "excerpt": "Expenses above 5000 require finance review. Prohibited categories must be rejected."
+      },
+      "rights": "Example content; not an operational policy."
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "approve",
+      "label": "Approve",
+      "description": "The evidence and declared rules support automatic approval."
+    },
+    {
+      "id": "manual-review",
+      "label": "Manual review",
+      "description": "An accountable finance reviewer must decide."
+    },
+    {
+      "id": "reject",
+      "label": "Reject",
+      "description": "The expense falls in a prohibited category."
+    }
+  ],
+  "rules": [
+    {
+      "id": "prohibited-category",
+      "description": "Reject expenses in a prohibited category.",
+      "when": {
+        "op": "fact",
+        "path": "/expense/category",
+        "operator": "in",
+        "value": ["personal", "cash-equivalent"]
+      },
+      "outcome": "reject",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["receipt", "cost-center"],
+      "sourceRefs": ["expense-policy"],
+      "rationale": "The example policy prohibits these categories."
+    },
+    {
+      "id": "large-expense",
+      "description": "Send expenses above the declared threshold to finance review.",
+      "when": {
+        "op": "fact",
+        "path": "/expense/amount",
+        "operator": "greater-than",
+        "value": "5000"
+      },
+      "outcome": "manual-review",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["receipt", "cost-center"],
+      "sourceRefs": ["expense-policy"],
+      "rationale": "The example policy requires finance review above 5000."
+    },
+    {
+      "id": "ordinary-expense",
+      "description": "Approve a supported ordinary expense at or below the threshold.",
+      "when": {
+        "op": "all",
+        "conditions": [
+          {
+            "op": "fact",
+            "path": "/expense/amount",
+            "operator": "less-than-or-equal",
+            "value": "5000"
+          },
+          {
+            "op": "not",
+            "condition": {
+              "op": "fact",
+              "path": "/expense/category",
+              "operator": "in",
+              "value": ["personal", "cash-equivalent"]
+            }
+          },
+          {
+            "op": "evidence-present",
+            "evidenceRequirement": "receipt"
+          },
+          {
+            "op": "evidence-present",
+            "evidenceRequirement": "cost-center"
+          }
+        ]
+      },
+      "outcome": "approve",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["receipt", "cost-center"],
+      "sourceRefs": ["expense-policy"],
+      "rationale": "Ordinary supported expenses may follow the automatic path."
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "active-investigation",
+      "description": "An expense connected to an active investigation requires human review.",
+      "when": {
+        "op": "fact",
+        "path": "/expense/activeInvestigation",
+        "operator": "equals",
+        "value": true
+      },
+      "effect": "force-outcome",
+      "outcome": "manual-review",
+      "onUnknown": "escalate"
+    }
+  ],
+  "fallbackOutcome": "manual-review",
+  "escalation": {
+    "triggers": [
+      "not-applicable",
+      "missing-required-evidence",
+      "unknown",
+      "conflict",
+      "no-match"
+    ],
+    "target": {
+      "kind": "human-role",
+      "name": "Finance reviewer"
+    },
+    "message": "Review the expense, cited policy, missing evidence, and conflicting rules."
+  },
+  "metadata": {
+    "authors": ["Judgment Pack Specification contributors"],
+    "createdAt": "2026-07-22T00:00:00Z",
+    "license": "Apache-2.0"
+  },
+  "extensions": {
+    "review-policy": true
+  }
+}
