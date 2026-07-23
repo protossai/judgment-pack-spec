@@ -1,18 +1,9 @@
 # Versioning and release policy
 
 Judgment Pack Specification releases use Semantic Versioning identifiers with a leading `v` on
-Git tags. Only a tag and GitHub release published by the maintainers establish an immutable
-release; similarly named files on the mutable `main` branch do not.
-
-Specification `0.1.0-draft` is identified by the tags `v0.1.0-draft` and `v0.1.0-draft.1`. Both
-publish the same specification version, and `specVersion` remains `0.1.0-draft` under either. The
-prose specification, conformance cases, and conformance manifest are byte-identical between the
-two tags. The two JSON Schema documents — the Core schema and the conformance manifest schema —
-differ only in their `$id` member, which `v0.1.0-draft.1` relocates from a temporary
-repository-hosted URL to its permanent `https://judgmentpack.org/schema/` form.
-
-New implementations SHOULD pin `v0.1.0-draft.1`. `v0.1.0-draft` remains published and immutable;
-artifacts already pinned to it stay valid and are not withdrawn.
+Git tags. Specification `0.1.0-draft` is identified by the exact tag `v0.1.0-draft`. Only a tag and
+GitHub release published by the maintainers establish an immutable release; similarly named files
+on the mutable `main` branch do not.
 
 ## Specification versions
 
