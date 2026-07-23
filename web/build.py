@@ -7,8 +7,10 @@ import argparse
 import html
 import json
 import posixpath
+import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from string import Template
 from urllib.parse import urlsplit, urlunsplit
@@ -28,6 +30,41 @@ TAGGED_SOURCE_REF = "v0.1.0-draft"
 GITHUB_BLOB_ROOT = "https://github.com/protossai/judgment-pack-spec/blob/"
 GITHUB_ROOT = GITHUB_BLOB_ROOT + TAGGED_SOURCE_REF + "/"
 OUTPUT_MARKER = ".generated-by-jps-site-build"
+GENERATOR_ID = "jps-site-build"
+_SHA_RE = re.compile(r"\A[0-9a-f]{7,40}\Z")
+
+
+@dataclass(frozen=True)
+class BuildConfig:
+    """Build-wide settings that make a deployed page traceable and preview-safe."""
+
+    environment: str
+    base_url: str
+    commit_sha: str
+    build_time: str
+    written: list[PurePosixPath] = field(default_factory=list)
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
+
+    @property
+    def default_noindex(self) -> bool:
+        # Preview builds are noindex everywhere; production indexes by default.
+        return not self.is_production
+
+    @property
+    def short_sha(self) -> str:
+        return self.commit_sha[:12] if self.commit_sha else "dev"
+
+
+_CONFIG: BuildConfig | None = None
+
+
+def active_config() -> BuildConfig:
+    if _CONFIG is None:
+        raise RuntimeError("BuildConfig is not initialized; run build() via the CLI entrypoint")
+    return _CONFIG
 
 
 @dataclass(frozen=True)
@@ -152,7 +189,7 @@ PAGES = (
         PurePosixPath("cli/index.html"),
         "Protoss CLI",
         "Install and use the nonnormative protoss spec developer commands for JPS.",
-        "cli",
+        "implementations",
         "Nonnormative CLI guide",
         source_ref="main",
     ),
@@ -272,7 +309,7 @@ NAVIGATION = (
     ("testing", "Test the preview", PurePosixPath("testing/index.html")),
     ("examples", "Examples", PurePosixPath("examples/index.html")),
     ("conformance", "Conformance", PurePosixPath("conformance/index.html")),
-    ("cli", "Protoss CLI", PurePosixPath("cli/index.html")),
+    ("implementations", "Implementations", PurePosixPath("implementations/index.html")),
     ("project", "Project", PurePosixPath("project/index.html")),
 )
 
@@ -285,6 +322,22 @@ def output_href(current: PurePosixPath, target: PurePosixPath) -> str:
         relative = posixpath.relpath(destination, start=start)
         return "./" if relative == "." else f"{relative.rstrip('/')}/"
     return posixpath.relpath(target.as_posix(), start=start)
+
+
+def absolute_url(base_url: str, output: PurePosixPath) -> str:
+    """Absolute, cleanUrls-correct URL for an output file.
+
+    ``base_url`` must already be trailing-slash-free. Directory index pages collapse to a
+    trailing-slash URL to match ``firebase.json`` ``cleanUrls`` and ``output_href``; the join is
+    unconditionally single-slash so a root or nested path can never produce ``//``.
+    """
+    path = output.as_posix()
+    if path == "index.html" or path.endswith("/index.html"):
+        directory = path[: -len("index.html")]  # "" at root, "spec/0.1.0-draft/" nested
+        return f"{base_url}/{directory}"
+    if path.endswith(".html"):
+        path = path[: -len(".html")]
+    return f"{base_url}/{path}"
 
 
 class LocalLinkRewriter(Treeprocessor):
@@ -421,7 +474,20 @@ def footer_html(current: PurePosixPath) -> str:
     for label, target in targets:
         href = target if isinstance(target, str) else output_href(current, target)
         links.append(f'<a href="{html.escape(href)}">{html.escape(label)}</a>')
-    return "<span>JPS research preview</span><span>" + " · ".join(links) + "</span>"
+    config = active_config()
+    build_stamp = ""
+    if config.commit_sha:
+        build_stamp = (
+            '<span class="build-stamp">Built from '
+            f"<code>{html.escape(config.short_sha)}</code>"
+            f" · {html.escape(config.build_time)}</span>"
+        )
+    return (
+        "<span>JPS research preview</span><span>"
+        + " · ".join(links)
+        + "</span>"
+        + build_stamp
+    )
 
 
 def page_html(
@@ -440,6 +506,7 @@ def page_html(
     base_href: str = "",
     noindex: bool = False,
 ) -> str:
+    config = active_config()
     stylesheet = output_href(output, PurePosixPath("assets/styles.css"))
     favicon = output_href(output, PurePosixPath("assets/favicon.svg"))
     home = output_href(output, PurePosixPath("index.html"))
@@ -482,14 +549,32 @@ def page_html(
         else:
             body = mobile_toc + body
     base_element = f'<base href="{html.escape(base_href)}">' if base_href else ""
+
+    effective_noindex = noindex or config.default_noindex
+    canonical_link = ""
+    social_meta = ""
+    if config.base_url and not effective_noindex:
+        location = html.escape(absolute_url(config.base_url, output), quote=True)
+        canonical_link = f'<link rel="canonical" href="{location}">'
+        social_meta = (
+            '<meta property="og:type" content="website">'
+            f'<meta property="og:url" content="{location}">'
+            f'<meta property="og:title" content="{html.escape(f"{title} — JPS", quote=True)}">'
+            f'<meta property="og:description" content="{html.escape(description, quote=True)}">'
+        )
+    generator_meta = f'<meta name="generator" content="{GENERATOR_ID} {html.escape(SITE_VERSION)}">'
+
     return TEMPLATE.safe_substitute(
         language="en",
         page_title=html.escape(f"{title} — JPS"),
         description=html.escape(description, quote=True),
         robots_meta=(
-            '<meta name="robots" content="noindex, nofollow">' if noindex else ""
+            '<meta name="robots" content="noindex, nofollow">' if effective_noindex else ""
         ),
         base_element=base_element,
+        canonical_link=canonical_link,
+        social_meta=social_meta,
+        generator_meta=generator_meta,
         stylesheet=html.escape(stylesheet),
         favicon=html.escape(favicon),
         home=html.escape(home),
@@ -513,6 +598,8 @@ def write_page(root: Path, output: PurePosixPath, content: str) -> None:
         raise ValueError(f"refusing to write outside the site output: {output}") from error
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(content, encoding="utf-8")
+    if _CONFIG is not None:
+        _CONFIG.written.append(output)
 
 
 def repository_file(relative: str) -> Path:
@@ -1080,10 +1167,48 @@ def copy_artifacts(output_root: Path) -> None:
 def copy_static(output_root: Path) -> None:
     destination = output_root / "assets"
     shutil.copytree(WEB_ROOT / "static", destination)
-    (output_root / "robots.txt").write_text(
-        "# Published research preview.\nUser-agent: *\nAllow: /\n",
-        encoding="utf-8",
+
+
+def build_robots(output_root: Path, config: BuildConfig) -> None:
+    if config.is_production:
+        lines = ["# Published specification.", "User-agent: *", "Allow: /"]
+        if config.base_url:
+            sitemap_url = absolute_url(config.base_url, PurePosixPath("sitemap.xml"))
+            lines += ["", f"Sitemap: {sitemap_url}"]
+    else:
+        lines = [
+            "# Non-production preview build — do not index.",
+            "User-agent: *",
+            "Disallow: /",
+        ]
+    (output_root / "robots.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def build_sitemap(output_root: Path, config: BuildConfig) -> None:
+    if not (config.is_production and config.base_url):
+        return
+    seen: set[str] = set()
+    locations: list[str] = []
+    for output in config.written:
+        if output.name == "404.html":
+            continue
+        location = absolute_url(config.base_url, output)
+        if location in seen:
+            continue
+        seen.add(location)
+        locations.append(location)
+    entries = "".join(
+        f"  <url><loc>{html.escape(location)}</loc>"
+        f"<lastmod>{html.escape(config.build_time)}</lastmod></url>\n"
+        for location in sorted(locations)
     )
+    document = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + entries
+        + "</urlset>\n"
+    )
+    (output_root / "sitemap.xml").write_text(document, encoding="utf-8")
 
 
 def build_not_found(output_root: Path) -> None:
@@ -1106,7 +1231,47 @@ def build_not_found(output_root: Path) -> None:
     write_page(output_root, page_output, rendered)
 
 
-def build(output: Path) -> None:
+def build_implementations_index(output_root: Path) -> None:
+    page_output = PurePosixPath("implementations/index.html")
+    cli_href = output_href(page_output, PurePosixPath("cli/index.html"))
+    body = f"""
+<h1>Implementations</h1>
+<p class="lede">Independent tools that implement JPS document conformance. A listing here records
+that a tool exercises the public specification; it is not certification, endorsement, or a
+reference designation.</p>
+<div class="notice notice-info"><strong>The specification is the authority.</strong> No listed
+implementation is normative. Passing a tool's checks establishes only what that tool reports about
+the JPS document layers, never factual grounding, authorization, safety, or fitness.</div>
+<h2 id="available">Available implementations</h2>
+<div class="card-grid">
+  <article class="card">
+    <p class="card-kicker">Nonnormative · maintained by Protoss AI</p>
+    <h2><a href="{html.escape(cli_href)}">Protoss CLI</a></h2>
+    <p>A public developer tool exposing <code>protoss spec</code> commands that validate the carrier,
+    structural schema, and semantic references of a JPS document against an immutable specification
+    release.</p>
+    <p class="card-meta">One implementation among peers</p>
+  </article>
+</div>
+<h2 id="adding-an-implementation">Adding an implementation</h2>
+<p>This list is open to independent implementations tested against the public conformance
+artifacts. Presence here does not make an implementation a reference implementation, an official
+validator, or a certification authority.</p>
+"""
+    rendered = page_html(
+        output=page_output,
+        title="Implementations",
+        description="Independent, nonnormative tools that implement JPS document conformance.",
+        section="implementations",
+        artifact_label="Informative",
+        body=body,
+    )
+    write_page(output_root, page_output, rendered)
+
+
+def build(output: Path, config: BuildConfig) -> None:
+    global _CONFIG
+    _CONFIG = config
     manifest = json.loads(repository_file("conformance/manifest.json").read_text(encoding="utf-8"))
     manifest_schema = json.loads(
         repository_file("conformance/manifest.schema.json").read_text(encoding="utf-8")
@@ -1121,9 +1286,12 @@ def build(output: Path) -> None:
     build_schema_page(output, routes)
     build_examples(output, routes)
     build_conformance(output, routes, manifest)
+    build_implementations_index(output)
     build_project_index(output)
     build_license(output)
     build_not_found(output)
+    build_robots(output, config)
+    build_sitemap(output, config)
 
 
 def parse_args() -> argparse.Namespace:
@@ -1134,10 +1302,67 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT,
         help="generated site directory (default: public/)",
     )
+    parser.add_argument(
+        "--environment",
+        choices=("preview", "production"),
+        default="preview",
+        help="production enables indexability, canonical URLs, and the sitemap",
+    )
+    parser.add_argument(
+        "--base-url",
+        default="",
+        help="absolute https origin, e.g. https://spec.example.org; required for production",
+    )
+    parser.add_argument(
+        "--commit-sha",
+        default="",
+        help="git commit for build provenance; required for production",
+    )
+    parser.add_argument(
+        "--build-time",
+        default="",
+        help="ISO-8601 UTC timestamp for sitemap lastmod; defaults to build wall-clock",
+    )
     return parser.parse_args()
+
+
+def _default_build_time() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def build_config_from_args(args: argparse.Namespace) -> BuildConfig:
+    environment = args.environment
+    base_url = (args.base_url or "").strip().rstrip("/")
+    commit_sha = (args.commit_sha or "").strip().lower()
+    if environment == "production":
+        problems: list[str] = []
+        parts = urlsplit(base_url)
+        if not base_url:
+            problems.append("--base-url is required for --environment production")
+        elif parts.scheme != "https" or not parts.netloc:
+            problems.append(
+                f"--base-url must be an absolute https:// origin with a host, got {base_url!r}"
+            )
+        elif parts.query or parts.fragment:
+            problems.append(f"--base-url must not carry a query or fragment: {base_url!r}")
+        if not commit_sha:
+            problems.append("--commit-sha is required for --environment production")
+        elif not _SHA_RE.match(commit_sha):
+            problems.append(f"--commit-sha is not a hex git sha: {commit_sha!r}")
+        if problems:
+            raise SystemExit("production build refused:\n  - " + "\n  - ".join(problems))
+    build_time = (args.build_time or "").strip() or _default_build_time()
+    return BuildConfig(
+        environment=environment,
+        base_url=base_url,
+        commit_sha=commit_sha,
+        build_time=build_time,
+    )
 
 
 if __name__ == "__main__":
     arguments = parse_args()
-    build(arguments.output.resolve())
-    print(f"Built JPS static site at {arguments.output.resolve()}")
+    configuration = build_config_from_args(arguments)
+    destination_root = arguments.output.resolve()
+    build(destination_root, configuration)
+    print(f"Built JPS static site ({configuration.environment}) at {destination_root}")

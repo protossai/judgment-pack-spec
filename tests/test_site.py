@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -52,8 +53,23 @@ class StaticSiteTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.temporary = tempfile.TemporaryDirectory(prefix="jps-site-test-")
         cls.output = Path(cls.temporary.name) / "site"
+        cls.base_url = "https://spec.example.test"
+        cls.commit_sha = "0123456789abcdef0123456789abcdef01234567"
         subprocess.run(
-            [sys.executable, str(ROOT / "web" / "build.py"), "--output", str(cls.output)],
+            [
+                sys.executable,
+                str(ROOT / "web" / "build.py"),
+                "--output",
+                str(cls.output),
+                "--environment",
+                "production",
+                "--base-url",
+                cls.base_url,
+                "--commit-sha",
+                cls.commit_sha,
+                "--build-time",
+                "2026-01-01T00:00:00+00:00",
+            ],
             cwd=ROOT,
             check=True,
             capture_output=True,
@@ -212,6 +228,8 @@ class StaticSiteTests(unittest.TestCase):
         self.assertNotIn("redirects", hosting)
         policy = hosting["headers"][0]["headers"][0]["value"]
         self.assertIn("script-src 'none'", policy)
+        header_keys = {header["key"] for header in hosting["headers"][0]["headers"]}
+        self.assertIn("Strict-Transport-Security", header_keys)
 
     def test_cli_page_is_explicitly_nonnormative_and_separate(self) -> None:
         content = (self.output / "cli" / "index.html").read_text(encoding="utf-8")
@@ -220,8 +238,8 @@ class StaticSiteTests(unittest.TestCase):
             self.output / "spec" / "0.1.0-draft" / "index.html"
         ).read_text(encoding="utf-8")
         self.assertIn("<title>Protoss CLI — JPS</title>", content)
-        self.assertIn('aria-current="page">Protoss CLI</a>', content)
-        self.assertIn(">Protoss CLI</a>", overview)
+        self.assertIn('aria-current="location">Implementations</a>', content)
+        self.assertIn(">Implementations</a>", overview)
         self.assertNotIn(">CLI proposal</a>", content)
         self.assertNotIn("Proposed Protoss CLI", content)
         self.assertNotIn("Informative proposal", content)
@@ -267,6 +285,116 @@ class StaticSiteTests(unittest.TestCase):
         not_found = (self.output / "404.html").read_text(encoding="utf-8")
         self.assertIn('<base href="/">', not_found)
         self.assertIn('name="robots" content="noindex, nofollow"', not_found)
+
+    def test_cli_is_demoted_from_primary_nav_to_implementations(self) -> None:
+        overview = (self.output / "index.html").read_text(encoding="utf-8")
+        nav_start = overview.index('<nav aria-label="Primary">')
+        primary_nav = overview[nav_start : overview.index("</nav>", nav_start)]
+        # A vendor product must not sit as a peer of Specification/Conformance in primary nav.
+        self.assertIn(">Implementations</a>", primary_nav)
+        self.assertNotIn("Protoss CLI", primary_nav)
+        self.assertNotIn(">CLI</a>", primary_nav)
+
+        implementations = (
+            self.output / "implementations" / "index.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn("<title>Implementations — JPS</title>", implementations)
+        self.assertIn("Protoss CLI", implementations)
+        self.assertIn("One implementation among peers", implementations)
+        self.assertIn("This list is open", implementations)
+        lowered = implementations.lower()
+        # The page explicitly denies reference/official status rather than claiming it.
+        self.assertIn(
+            "does not make an implementation a reference implementation", lowered
+        )
+
+    def test_production_pages_carry_absolute_canonical_and_og_url(self) -> None:
+        overview = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f'<link rel="canonical" href="{self.base_url}/">', overview)
+        spec = (
+            self.output / "spec" / "0.1.0-draft" / "index.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            f'<link rel="canonical" href="{self.base_url}/spec/0.1.0-draft/">', spec
+        )
+        self.assertIn(
+            f'property="og:url" content="{self.base_url}/spec/0.1.0-draft/"', spec
+        )
+
+    def test_absolute_urls_never_contain_double_slashes(self) -> None:
+        pattern = re.compile(
+            r'(?:rel="canonical" href|property="og:url" content)="(https://[^"]+)"'
+        )
+        for page in self.output.rglob("*.html"):
+            for url in pattern.findall(page.read_text(encoding="utf-8")):
+                self.assertNotIn("//", url.split("://", 1)[1], f"double slash in {url}")
+        sitemap = (self.output / "sitemap.xml").read_text(encoding="utf-8")
+        for location in re.findall(r"<loc>(https://[^<]+)</loc>", sitemap):
+            self.assertNotIn("//", location.split("://", 1)[1], f"double slash in {location}")
+
+    def test_sitemap_lists_indexable_pages_and_excludes_404(self) -> None:
+        sitemap = (self.output / "sitemap.xml").read_text(encoding="utf-8")
+        self.assertIn(f"<loc>{self.base_url}/</loc>", sitemap)
+        self.assertIn(f"<loc>{self.base_url}/spec/0.1.0-draft/</loc>", sitemap)
+        self.assertIn(f"<loc>{self.base_url}/implementations/</loc>", sitemap)
+        self.assertNotIn("404", sitemap)
+
+    def test_pages_carry_neutral_generator_and_commit_provenance(self) -> None:
+        overview = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(
+            '<meta name="generator" content="jps-site-build 0.1.0-draft">', overview
+        )
+        self.assertIn("Built from", overview)
+        self.assertIn(self.commit_sha[:12], overview)
+        generator = overview.split('name="generator" content="')[1].split('"')[0]
+        self.assertNotIn("protoss", generator.lower())
+
+    def test_noindex_pages_have_no_canonical(self) -> None:
+        not_found = (self.output / "404.html").read_text(encoding="utf-8")
+        self.assertNotIn('rel="canonical"', not_found)
+
+    def test_preview_build_is_noindex_and_uncanonical(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="jps-preview-test-") as temporary:
+            output = Path(temporary) / "site"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "web" / "build.py"),
+                    "--output",
+                    str(output),
+                    "--environment",
+                    "preview",
+                ],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("Disallow: /", (output / "robots.txt").read_text(encoding="utf-8"))
+            overview = (output / "index.html").read_text(encoding="utf-8")
+            self.assertIn('name="robots" content="noindex, nofollow"', overview)
+            self.assertNotIn('rel="canonical"', overview)
+            self.assertFalse((output / "sitemap.xml").exists())
+
+    def test_production_build_refuses_missing_base_url(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="jps-guard-test-") as temporary:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "web" / "build.py"),
+                    "--output",
+                    str(Path(temporary) / "site"),
+                    "--environment",
+                    "production",
+                    "--commit-sha",
+                    "abcdef1",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--base-url is required", result.stderr)
 
 
 if __name__ == "__main__":
