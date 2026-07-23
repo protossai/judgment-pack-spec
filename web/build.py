@@ -520,14 +520,12 @@ def render_markdown(
     return body, renderer.toc
 
 
-def nav_icon_link(url: str, label: str, svg: str, lead: bool = False) -> str:
+def nav_icon_anchor(url: str, label: str, svg: str) -> str:
     """External community icon link: new tab, accessible name, tooltip, keyboard-focusable."""
-    css = "nav-icon-item nav-icon-lead" if lead else "nav-icon-item"
     return (
-        f'<li class="{css}">'
         f'<a class="nav-icon" href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
         f'aria-label="{html.escape(label, quote=True)}" title="{html.escape(label, quote=True)}">'
-        f"{svg}</a></li>"
+        f"{svg}</a>"
     )
 
 
@@ -545,10 +543,21 @@ def nav_html(current: PurePosixPath, active: str) -> str:
             f'<li><a href="{html.escape(output_href(current, target))}"{current_attr}>'
             f"{html.escape(label)}</a></li>"
         )
-    # Icon links are ordinary primary-nav items so they sit inline and inherit list-style: none.
-    links.append(nav_icon_link(GITHUB_URL, "View the specification on GitHub", GITHUB_ICON_SVG, lead=True))
-    links.append(nav_icon_link(SLACK_URL, "Join the Judgment Pack community", SLACK_ICON_SVG))
-    return '<ul class="primary-nav">' + "".join(links) + "</ul>"
+    text_nav = '<ul class="primary-nav">' + "".join(links) + "</ul>"
+    icons = (
+        nav_icon_anchor(GITHUB_URL, "View the specification on GitHub", GITHUB_ICON_SVG)
+        + nav_icon_anchor(SLACK_URL, "Join the Judgment Pack community", SLACK_ICON_SVG)
+    )
+    # JS-free responsive nav: a hidden, focusable checkbox toggles the collapsed link
+    # list on small screens; the icons and hamburger label stay visible beside it.
+    toggle = '<input type="checkbox" id="nav-menu-toggle" class="nav-toggle-input">'
+    hamburger = (
+        '<label for="nav-menu-toggle" class="nav-toggle">'
+        '<span class="nav-toggle-bars" aria-hidden="true"></span>'
+        '<span class="visually-hidden">Menu</span></label>'
+    )
+    actions = f'<div class="nav-actions">{icons}{hamburger}</div>'
+    return toggle + text_nav + actions
 
 
 def footer_html(current: PurePosixPath) -> str:

@@ -71,16 +71,64 @@ summary:focus-visible,
   transform: translateY(0);
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Collapsible research-preview banner (native <details>, no JavaScript). */
 .preview-banner {
-  display: flex;
-  justify-content: center;
-  gap: 0.7rem;
-  padding: 0.48rem 1rem;
   color: #302313;
   background: var(--accent-soft);
   border-bottom: 1px solid #e8c28a;
   font-size: 0.84rem;
   text-align: center;
+}
+
+.preview-banner-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.48rem 1rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.preview-banner-summary::-webkit-details-marker {
+  display: none;
+}
+
+.preview-banner-summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -3px;
+}
+
+.preview-banner-chevron {
+  flex: none;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.preview-banner[open] .preview-banner-chevron {
+  transform: translateY(0.12rem) rotate(-135deg);
+}
+
+.preview-banner-detail {
+  max-width: none;
+  margin: 0;
+  padding: 0 1rem 0.5rem;
 }
 
 .site-top {
@@ -159,13 +207,29 @@ summary:focus-visible,
   background: #e5eeee;
 }
 
-.nav-icon-lead {
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* Hidden (and not a tab stop) on desktop where the hamburger isn't shown; the
+   max-width:880px block renders it clipped-but-focusable so the label toggle works. */
+.nav-toggle-input {
+  display: none;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
   margin-left: 0.35rem;
   padding-left: 0.45rem;
   border-left: 1px solid var(--line);
 }
 
-.primary-nav .nav-icon {
+.nav-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -174,13 +238,80 @@ summary:focus-visible,
   border-radius: 0.4rem;
 }
 
-.primary-nav .nav-icon:hover {
+.nav-icon:hover {
   color: var(--brand);
   background: var(--surface-subtle);
 }
 
 .nav-icon-svg {
   display: block;
+}
+
+/* Hamburger — hidden on desktop, shown on small screens. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--muted);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.nav-toggle:hover {
+  color: var(--brand);
+  background: var(--surface-subtle);
+}
+
+.nav-toggle-input:focus-visible ~ .nav-actions .nav-toggle {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.nav-toggle-bars {
+  position: relative;
+}
+
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  display: block;
+  width: 1.15rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: transform 0.15s ease, background 0.15s ease, top 0.15s ease;
+}
+
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.nav-toggle-bars::before {
+  top: -6px;
+}
+
+.nav-toggle-bars::after {
+  top: 6px;
+}
+
+/* Open state: hamburger morphs into an X. */
+.nav-toggle-input:checked ~ .nav-actions .nav-toggle .nav-toggle-bars {
+  background: transparent;
+}
+
+.nav-toggle-input:checked ~ .nav-actions .nav-toggle .nav-toggle-bars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.nav-toggle-input:checked ~ .nav-actions .nav-toggle .nav-toggle-bars::after {
+  top: 0;
+  transform: rotate(-45deg);
 }
 
 .hero {
@@ -864,24 +995,74 @@ main {
 }
 
 @media (max-width: 880px) {
+  /* Positioned so the collapsed menu drops below the full header width. */
   .site-header {
-    position: static;
+    position: relative;
   }
 
   .header-inner {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding-block: 0.8rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding-block: 0.6rem;
+    min-height: 3.5rem;
+  }
+
+  .nav-actions {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+    gap: 0.15rem;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  /* Rendered so it is keyboard-focusable, but clipped from view (the label is visible). */
+  .nav-toggle-input {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
   .primary-nav {
-    justify-content: flex-start;
+    display: none;
   }
 
-  .header-inner nav {
-    width: 100%;
-    min-width: 0;
+  .nav-toggle-input:checked ~ .primary-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    padding: 0.5rem clamp(1rem, 5vw, 2rem) 1rem;
+    background: rgb(255 255 255 / 98%);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    /* Cap to the space below the header so long menus scroll internally instead of
+       running off-screen with unreachable items (the dropdown is pinned to the sticky
+       header, so the page itself cannot scroll to them). The offset is generous enough
+       to clear the collapsed header at any mobile width. */
+    max-height: calc(100vh - 7rem);
+    max-height: calc(100dvh - 7rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* When the banner is expanded it eats more of the top (its disclaimer wraps to a few
+     lines on narrow screens), so leave enough room for the menu to stay on-screen. */
+  .site-top:has(.preview-banner[open]) .nav-toggle-input:checked ~ .primary-nav {
+    max-height: calc(100dvh - 16rem);
+  }
+
+  .primary-nav a {
+    padding: 0.7rem 0.65rem;
   }
 
   .hero {
@@ -912,14 +1093,6 @@ main {
 @media (max-width: 600px) {
   :root {
     font-size: 15px;
-  }
-
-  .preview-banner {
-    display: block;
-  }
-
-  .preview-banner span {
-    display: block;
   }
 
   .brand span:last-child {
@@ -998,5 +1171,14 @@ main {
     color: black;
     background: white;
     border: 2px solid black;
+  }
+
+  /* Always print the full disclaimer, even if collapsed on screen. */
+  .preview-banner-detail {
+    display: block;
+  }
+
+  .preview-banner-chevron {
+    display: none;
   }
 }

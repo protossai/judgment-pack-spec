@@ -297,7 +297,7 @@ class StaticSiteTests(unittest.TestCase):
 
     def test_cli_is_demoted_from_primary_nav_to_implementations(self) -> None:
         overview = (self.output / "index.html").read_text(encoding="utf-8")
-        nav_start = overview.index('<nav aria-label="Primary">')
+        nav_start = overview.index('aria-label="Primary"')
         primary_nav = overview[nav_start : overview.index("</nav>", nav_start)]
         # A vendor product must not sit as a peer of Specification/Conformance in primary nav.
         self.assertIn(">Implementations</a>", primary_nav)
@@ -425,7 +425,7 @@ class StaticSiteTests(unittest.TestCase):
 
 
     def _primary_nav(self, page_html: str) -> str:
-        start = page_html.index('<nav aria-label="Primary">')
+        start = page_html.index('aria-label="Primary"')
         return page_html[start : page_html.index("</nav>", start)]
 
     def test_navigation_has_github_and_slack_icons(self) -> None:
@@ -445,6 +445,38 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn(">Why</a>", nav)
         self.assertIn(">Governance</a>", nav)
         self.assertIn(">Implementations</a>", nav)
+
+    def test_preview_banner_is_a_collapsible_details(self) -> None:
+        page = (self.output / "index.html").read_text(encoding="utf-8")
+        # Native <details> disclosure — collapsible with no JavaScript, collapsed by default.
+        self.assertIn('<details class="preview-banner">', page)
+        self.assertNotIn('<details class="preview-banner" open>', page)
+        self.assertIn('<summary class="preview-banner-summary">', page)
+        self.assertIn("Research preview", page)
+        self.assertIn(
+            "No compatibility guarantee. Not for consequential production decisions.",
+            page,
+        )
+
+    def test_mobile_nav_uses_a_jsfree_hamburger_with_icons(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        # A checkbox + <label for> toggle: pure CSS, no JavaScript or inline handlers.
+        self.assertIn('<input type="checkbox" id="nav-menu-toggle"', nav)
+        self.assertIn('<label for="nav-menu-toggle" class="nav-toggle">', nav)
+        self.assertNotIn("onclick", nav)
+        # The two community icons stay visible beside the hamburger (not hidden in the menu).
+        actions = nav[nav.index('class="nav-actions"') :]
+        self.assertEqual(actions.count('class="nav-icon"'), 2)
+        self.assertIn("nav-toggle", actions)
+
+    def test_no_javascript_anywhere_in_rendered_pages(self) -> None:
+        # script-src 'none' is a hard invariant: no <script> tag or inline handler in any page.
+        for path in self.output.rglob("*.html"):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(self.output)
+            self.assertNotIn("<script", text, f"{rel} contains a <script> tag")
+            self.assertNotIn("onclick", text, f"{rel} contains an inline handler")
+            self.assertNotIn("javascript:", text, f"{rel} contains a javascript: URL")
 
     def test_why_page_explains_motivation(self) -> None:
         why = (self.output / "why" / "index.html").read_text(encoding="utf-8")
