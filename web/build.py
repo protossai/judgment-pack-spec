@@ -29,6 +29,35 @@ SITE_VERSION = "0.1.0-draft"
 TAGGED_SOURCE_REF = "v0.1.0-draft"
 GITHUB_BLOB_ROOT = "https://github.com/Judgment-Pack/judgment-pack-spec/blob/"
 GITHUB_ROOT = GITHUB_BLOB_ROOT + TAGGED_SOURCE_REF + "/"
+GITHUB_URL = "https://github.com/Judgment-Pack/judgment-pack-spec"
+SLACK_URL = "https://judgment-pack.slack.com"
+# Recognizable, monochrome inline marks (currentColor) — no external icon dependency.
+GITHUB_ICON_SVG = (
+    '<svg class="nav-icon-svg" viewBox="0 0 16 16" width="18" height="18" '
+    'aria-hidden="true" focusable="false" fill="currentColor">'
+    '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '
+    '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53'
+    '.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 '
+    '0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 '
+    '1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 '
+    '3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 '
+    '16 8c0-4.42-3.58-8-8-8z"/></svg>'
+)
+SLACK_ICON_SVG = (
+    '<svg class="nav-icon-svg" viewBox="0 0 24 24" width="18" height="18" '
+    'aria-hidden="true" focusable="false" fill="currentColor">'
+    '<path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 '
+    '2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A'
+    '2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521'
+    '-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 '
+    '0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 '
+    '2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 '
+    '2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1'
+    '-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a'
+    '2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52z'
+    'M15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 '
+    '15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>'
+)
 OUTPUT_MARKER = ".generated-by-jps-site-build"
 GENERATOR_ID = "jps-site-build"
 _SHA_RE = re.compile(r"\A[0-9a-f]{7,40}\Z")
@@ -157,6 +186,30 @@ EXAMPLE_GUIDES = {
             "Remove demo copy is only a display label: it never deletes, retains, or authorizes disposition of any real record.",
         ),
     ),
+    "supplier-invoice-approval.json": ExampleGuide(
+        focus="A business approve / manual-review / escalate / reject decision gated on evidence.",
+        demonstrates=(
+            "A synthetic accounts-payable pack with applicability, three required evidence items, a cited "
+            "source, four outcomes, exact-match and compound rules, a suspected-duplicate exception, a "
+            "manual-review fallback, and explicit escalation."
+        ),
+        good_for=(
+            "Seeing how required evidence, a variance threshold, and a restricted-supplier check combine into one automatic-approval decision.",
+            "Tracing every outcome, evidence, and source id from its declaration to each local reference.",
+            "Contrasting the automatic approve path with the manual-review, escalate, and reject paths in one document.",
+        ),
+        edges=(
+            "Only context=training-fixture is applicable; any other context is outside the example's declared scope.",
+            "A restricted supplier rejects and a variance above the declared tolerance escalates; both outrank the automatic path in the informative model.",
+            "With all required evidence present, an in-tolerance invoice from a non-restricted supplier follows the automatic approve path.",
+            "A suspected-duplicate flag forces manual review; missing required evidence instead requests the configured handoff.",
+        ),
+        failure_paths=(
+            "In a scratch copy, remove the goods-receipt evidence declaration while keeping a reference to it; the document keeps a valid JSON shape but must fail semantic document conformance.",
+            "Point fallbackOutcome at an undeclared outcome id to produce a dangling-reference semantic failure.",
+            "Approve, escalate, and reject are only display labels; never treat them as authorization to pay, hold, or refuse a real invoice.",
+        ),
+    ),
 }
 
 
@@ -165,8 +218,16 @@ PAGES = (
         "README.md",
         PurePosixPath("index.html"),
         "Judgment Pack Specification",
-        "A research preview of a portable, vendor-neutral representation for reusable organizational judgment.",
+        "Judgment Pack is an open specification for representing, testing, and exchanging the evidence, rules, exceptions, uncertainty, escalation criteria, and evaluations behind AI decisions.",
         "overview",
+        source_ref="main",
+    ),
+    Page(
+        "docs/why.md",
+        PurePosixPath("why/index.html"),
+        "Why Judgment Pack?",
+        "Why executable, testable judgment is the missing layer for reliable business agents — and how a Judgment Pack provides it.",
+        "why",
         source_ref="main",
     ),
     Page(
@@ -197,8 +258,8 @@ PAGES = (
         "GOVERNANCE.md",
         PurePosixPath("project/governance/index.html"),
         "Governance",
-        "How decisions are made during research incubation and how governance may evolve.",
-        "project",
+        "How the open, vendor-neutral specification is governed and how to participate.",
+        "governance",
     ),
     Page(
         "ROADMAP.md",
@@ -259,16 +320,16 @@ PAGES = (
     Page(
         "docs/origin-and-boundary.md",
         PurePosixPath("project/origin-and-boundary/index.html"),
-        "Origin and boundary",
-        "The relationship between the vendor-neutral proposal and Protoss AI.",
+        "Origin and scope",
+        "How the specification is developed independently of any single implementation.",
         "project",
         source_ref="main",
     ),
     Page(
         "docs/tooling-architecture.md",
         PurePosixPath("project/tooling/index.html"),
-        "Tooling architecture",
-        "Why the separate protoss-cli repository owns the protoss spec command namespace.",
+        "Specification and implementation boundary",
+        "Why the specification stays independent of any particular tool or implementation.",
         "project",
         source_ref="main",
     ),
@@ -305,12 +366,12 @@ PAGES = (
 
 NAVIGATION = (
     ("overview", "Overview", PurePosixPath("index.html")),
+    ("why", "Why", PurePosixPath("why/index.html")),
     ("spec", "Specification", PurePosixPath("spec/0.1.0-draft/index.html")),
-    ("testing", "Test the preview", PurePosixPath("testing/index.html")),
     ("examples", "Examples", PurePosixPath("examples/index.html")),
     ("conformance", "Conformance", PurePosixPath("conformance/index.html")),
     ("implementations", "Implementations", PurePosixPath("implementations/index.html")),
-    ("project", "Project", PurePosixPath("project/index.html")),
+    ("governance", "Governance", PurePosixPath("project/governance/index.html")),
 )
 
 
@@ -446,6 +507,16 @@ def render_markdown(
     return body, renderer.toc
 
 
+def nav_icon_link(url: str, label: str, svg: str) -> str:
+    """External community icon link: new tab, accessible name, tooltip, keyboard-focusable."""
+    return (
+        '<li class="nav-icon-item">'
+        f'<a class="nav-icon" href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
+        f'aria-label="{html.escape(label, quote=True)}" title="{html.escape(label, quote=True)}">'
+        f"{svg}</a></li>"
+    )
+
+
 def nav_html(current: PurePosixPath, active: str) -> str:
     links = []
     for key, label, target in NAVIGATION:
@@ -460,20 +531,34 @@ def nav_html(current: PurePosixPath, active: str) -> str:
             f'<li><a href="{html.escape(output_href(current, target))}"{current_attr}>'
             f"{html.escape(label)}</a></li>"
         )
-    return '<ul class="primary-nav">' + "".join(links) + "</ul>"
+    icons = (
+        nav_icon_link(GITHUB_URL, "View the specification on GitHub", GITHUB_ICON_SVG)
+        + nav_icon_link(SLACK_URL, "Join the Judgment Pack community", SLACK_ICON_SVG)
+    )
+    return '<ul class="primary-nav">' + "".join(links) + '<li class="nav-icons">' + \
+        '<ul class="nav-icon-group">' + icons + "</ul></li></ul>"
 
 
 def footer_html(current: PurePosixPath) -> str:
-    targets = (
-        ("Contribute", PurePosixPath("project/contributing/index.html")),
-        ("Security", PurePosixPath("project/security/index.html")),
+    internal = (
+        ("Governance", PurePosixPath("project/governance/index.html")),
+        ("Contributing", PurePosixPath("project/contributing/index.html")),
+        ("Code of conduct", PurePosixPath("project/code-of-conduct/index.html")),
         ("Apache-2.0", PurePosixPath("project/license/index.html")),
-        ("Source on GitHub", "https://github.com/Judgment-Pack/judgment-pack-spec"),
     )
-    links = []
-    for label, target in targets:
-        href = target if isinstance(target, str) else output_href(current, target)
-        links.append(f'<a href="{html.escape(href)}">{html.escape(label)}</a>')
+    external = (
+        ("GitHub", GITHUB_URL, "View the specification on GitHub"),
+        ("Slack", SLACK_URL, "Join the Judgment Pack community"),
+    )
+    links = [
+        f'<a href="{html.escape(output_href(current, target))}">{html.escape(label)}</a>'
+        for label, target in internal
+    ]
+    for label, url, title in external:
+        links.append(
+            f'<a href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
+            f'title="{html.escape(title, quote=True)}">{html.escape(label)}</a>'
+        )
     config = active_config()
     build_stamp = ""
     if config.commit_sha:
@@ -483,7 +568,9 @@ def footer_html(current: PurePosixPath) -> str:
             f" · {html.escape(config.build_time)}</span>"
         )
     return (
-        "<span>JPS research preview</span><span>"
+        '<span class="footer-tagline">Judgment Pack is an open, vendor-neutral specification for '
+        "executable and testable AI judgment.</span>"
+        '<span class="footer-links">'
         + " · ".join(links)
         + "</span>"
         + build_stamp
@@ -721,14 +808,15 @@ Use only a minimal synthetic reproduction, then
             hero = f"""
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero-copy">
-    <p class="eyebrow">Portable judgment, explicitly bounded</p>
-    <h1 id="hero-title">Judgment Pack Specification</h1>
-    <p class="hero-lede">A vendor-neutral research proposal for representing reusable
-    organizational judgment as inspectable JSON documents.</p>
+    <p class="eyebrow">Open, vendor-neutral specification</p>
+    <h1 id="hero-title">Make expert judgment executable and testable.</h1>
+    <p class="hero-lede">Judgment Pack is an open specification for representing the evidence, rules,
+    exceptions, uncertainty, escalation criteria, and evaluations behind an AI agent's decisions.</p>
     <div class="hero-actions">
-      <a class="button button-primary" href="{html.escape(output_href(page.output, PurePosixPath('spec/0.1.0-draft/index.html')))}">Read the core specification</a>
-      <a class="button button-secondary" href="{html.escape(output_href(page.output, PurePosixPath('testing/index.html')))}">Try the 15-minute test</a>
+      <a class="button button-primary" href="{html.escape(output_href(page.output, PurePosixPath('spec/0.1.0-draft/index.html')))}">Read the specification</a>
+      <a class="button button-secondary" href="{html.escape(GITHUB_URL)}" target="_blank" rel="noopener noreferrer">View on GitHub</a>
     </div>
+    <p class="hero-support"><a href="{html.escape(output_href(page.output, PurePosixPath('why/index.html')))}">Why Judgment Pack?</a></p>
   </div>
   <div class="scope-card" aria-label="Current scope">
     <p class="scope-card-title">What this draft can test</p>
@@ -897,9 +985,8 @@ each page explain illustrative applicability, evidence, unknown, conflict, and f
 without claiming an expected runtime decision. Validity never proves truth, authority, safety, or
 fitness.</p>
 <p>For the structural baseline, use an independent Draft 2020-12 implementation and inspect
-semantic references separately. For all current JPS document-conformance layers, the separate,
-nonnormative <a href="{html.escape(output_href(index_output, PurePosixPath('cli/index.html')))}">Protoss CLI</a>
-is one available local tool.</p>
+semantic references separately. Conforming tools that check all current JPS document-conformance
+layers are listed on the <a href="{html.escape(output_href(index_output, PurePosixPath('implementations/index.html')))}">Implementations</a> page.</p>
 <div class="card-grid">{''.join(cards)}</div>
 """
     rendered = page_html(
@@ -1096,9 +1183,8 @@ def build_project_index(output_root: Path) -> None:
             (
                 ("Design principles", "Constraints that shape JPS.", "project/design-principles/index.html"),
                 ("Non-goals", "What JPS intentionally does not standardize.", "project/non-goals/index.html"),
-                ("Origin and boundary", "How JPS relates to Protoss AI.", "project/origin-and-boundary/index.html"),
-                ("Protoss CLI", "Install and use nonnormative protoss spec commands.", "cli/index.html"),
-                ("Tooling architecture", "The separate protoss CLI repository boundary.", "project/tooling/index.html"),
+                ("Origin and scope", "How the specification stays independent of any implementation.", "project/origin-and-boundary/index.html"),
+                ("Specification and implementation boundary", "Why the spec is usable without any particular tool.", "project/tooling/index.html"),
                 ("Site deployment", "Build, preview, and hosting guidance.", "project/deployment/index.html"),
             ),
         ),

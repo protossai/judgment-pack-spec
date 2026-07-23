@@ -184,8 +184,8 @@ class StaticSiteTests(unittest.TestCase):
         index = (self.output / "examples" / "index.html").read_text(encoding="utf-8")
         self.assertIn("How to use these examples", index)
         self.assertIn("structurally and semantically conforming JPS documents", index)
-        self.assertIn("Protoss CLI", index)
-        self.assertIn("one available local tool", index)
+        self.assertNotIn("Protoss", index)
+        self.assertIn("Conforming tools", index)
         self.assertIn("For the structural baseline", index)
 
         expected = {
@@ -422,6 +422,77 @@ class StaticSiteTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("--base-url is required", result.stderr)
+
+
+    def _primary_nav(self, page_html: str) -> str:
+        start = page_html.index('<nav aria-label="Primary">')
+        return page_html[start : page_html.index("</nav>", start)]
+
+    def test_navigation_has_github_and_slack_icons(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        self.assertIn('class="nav-icon-svg"', nav)  # inline SVG, no external icon dependency
+        self.assertIn('href="https://github.com/Judgment-Pack/judgment-pack-spec"', nav)
+        self.assertIn('aria-label="View the specification on GitHub"', nav)
+        self.assertIn('title="View the specification on GitHub"', nav)
+        self.assertIn('href="https://judgment-pack.slack.com"', nav)
+        self.assertIn('aria-label="Join the Judgment Pack community"', nav)
+        self.assertIn('title="Join the Judgment Pack community"', nav)
+        self.assertGreaterEqual(nav.count('target="_blank"'), 2)
+        self.assertGreaterEqual(nav.count('rel="noopener noreferrer"'), 2)
+
+    def test_why_and_governance_are_in_primary_navigation(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        self.assertIn(">Why</a>", nav)
+        self.assertIn(">Governance</a>", nav)
+        self.assertIn(">Implementations</a>", nav)
+
+    def test_why_page_explains_motivation(self) -> None:
+        why = (self.output / "why" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("<title>Why Judgment Pack? — JPS</title>", why)
+        for phrase in (
+            "Why coding agents work better",
+            "Coding agents have compilers and tests.",
+            "Knowledge helps an agent",
+            "Determines applicability",
+            "What Judgment Pack is not",
+            "supplier invoice",
+        ):
+            self.assertIn(phrase, why)
+        # Links to the full example and the specification, rewritten to real site routes.
+        self.assertIn('href="../examples/supplier-invoice-approval/"', why)
+        self.assertIn('href="../spec/0.1.0-draft/"', why)
+        self.assertNotIn("Protoss", why)
+
+    def test_neutral_pages_contain_no_protoss(self) -> None:
+        # Protoss is confined to the Implementations section; every other page is vendor-neutral.
+        allowed = {"cli/index.html", "implementations/index.html"}
+        offenders = []
+        for page in self.output.rglob("*.html"):
+            rel = page.relative_to(self.output).as_posix()
+            if rel in allowed:
+                continue
+            if "protoss" in page.read_text(encoding="utf-8").lower():
+                offenders.append(rel)
+        self.assertEqual([], offenders, f"Protoss appears on neutral pages: {offenders}")
+
+    def test_footer_has_tagline_and_community_links(self) -> None:
+        overview = (self.output / "index.html").read_text(encoding="utf-8")
+        footer = overview[overview.index("<footer") :]
+        self.assertIn(
+            "open, vendor-neutral specification for executable and testable AI judgment", footer
+        )
+        self.assertIn('href="https://github.com/Judgment-Pack/judgment-pack-spec"', footer)
+        self.assertIn('href="https://judgment-pack.slack.com"', footer)
+        self.assertIn(">Apache-2.0</a>", footer)
+
+    def test_supplier_invoice_example_is_published(self) -> None:
+        detail = self.output / "examples" / "supplier-invoice-approval" / "index.html"
+        self.assertTrue(detail.is_file())
+        content = detail.read_text(encoding="utf-8")
+        self.assertIn("Guide to this example", content)
+        self.assertIn("invoice", content.lower())
+        index = (self.output / "examples" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("supplier-invoice-approval/", index)
 
 
 if __name__ == "__main__":

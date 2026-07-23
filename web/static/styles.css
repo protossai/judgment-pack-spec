@@ -156,6 +156,41 @@ summary:focus-visible,
   background: #e5eeee;
 }
 
+.nav-icons {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.3rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--line);
+}
+
+.nav-icon-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.primary-nav .nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: var(--muted);
+  border-radius: 0.4rem;
+}
+
+.primary-nav .nav-icon:hover {
+  color: var(--brand);
+  background: var(--surface-subtle);
+}
+
+.nav-icon-svg {
+  display: block;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
@@ -172,6 +207,21 @@ summary:focus-visible,
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.hero-support {
+  margin: 1.15rem 0 0;
+  font-weight: 640;
+}
+
+.footer-tagline {
+  max-width: 46ch;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
 }
 
 .hero h1 {
