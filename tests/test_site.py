@@ -222,14 +222,23 @@ class StaticSiteTests(unittest.TestCase):
     def test_firebase_configuration_is_static_only(self) -> None:
         config = json.loads((ROOT / "firebase.json").read_text(encoding="utf-8"))
         hosting = config["hosting"]
-        self.assertEqual(hosting["public"], "public")
-        self.assertTrue(hosting["cleanUrls"])
-        self.assertNotIn("rewrites", hosting)
-        self.assertNotIn("redirects", hosting)
-        policy = hosting["headers"][0]["headers"][0]["value"]
+        # Multi-site: a static spec target plus a redirect-only target.
+        spec = next(site for site in hosting if site.get("target") == "spec")
+        self.assertEqual(spec["public"], "public")
+        self.assertTrue(spec["cleanUrls"])
+        self.assertNotIn("rewrites", spec)
+        self.assertNotIn("redirects", spec)
+        policy = spec["headers"][0]["headers"][0]["value"]
         self.assertIn("script-src 'none'", policy)
-        header_keys = {header["key"] for header in hosting["headers"][0]["headers"]}
+        header_keys = {header["key"] for header in spec["headers"][0]["headers"]}
         self.assertIn("Strict-Transport-Security", header_keys)
+        # The redirect target 301s every path to the canonical neutral domain.
+        redirect = next(site for site in hosting if site.get("target") == "redirect")
+        self.assertNotIn("rewrites", redirect)
+        self.assertEqual(redirect["redirects"][0]["type"], 301)
+        self.assertEqual(
+            redirect["redirects"][0]["destination"], "https://judgmentpack.org"
+        )
 
     def test_cli_page_is_explicitly_nonnormative_and_separate(self) -> None:
         content = (self.output / "cli" / "index.html").read_text(encoding="utf-8")

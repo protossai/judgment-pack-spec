@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "replace-with-your-firebase-project-id"
+  },
+  "targets": {
+    "replace-with-your-firebase-project-id": {
+      "hosting": {
+        "spec": [
+          "replace-with-your-spec-site-id"
+        ],
+        "redirect": [
+          "replace-with-your-redirect-site-id"
+        ]
+      }
+    }
   }
 }
