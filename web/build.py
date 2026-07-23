@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import hashlib
 import posixpath
 import re
 import shutil
@@ -29,8 +30,39 @@ SITE_VERSION = "0.1.0-draft"
 TAGGED_SOURCE_REF = "v0.1.0-draft"
 GITHUB_BLOB_ROOT = "https://github.com/Judgment-Pack/judgment-pack-spec/blob/"
 GITHUB_ROOT = GITHUB_BLOB_ROOT + TAGGED_SOURCE_REF + "/"
+GITHUB_URL = "https://github.com/Judgment-Pack/judgment-pack-spec"
+SLACK_URL = "https://join.slack.com/t/judgment-pack/shared_invite/zt-44qrd47ok-o_~Vk3BFDzsN~EGAPkeQBw"
+# Recognizable, monochrome inline marks (currentColor) — no external icon dependency.
+GITHUB_ICON_SVG = (
+    '<svg class="nav-icon-svg" viewBox="0 0 16 16" width="18" height="18" '
+    'aria-hidden="true" focusable="false" fill="currentColor">'
+    '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '
+    '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53'
+    '.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 '
+    '0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 '
+    '1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 '
+    '3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 '
+    '16 8c0-4.42-3.58-8-8-8z"/></svg>'
+)
+SLACK_ICON_SVG = (
+    '<svg class="nav-icon-svg" viewBox="0 0 24 24" width="18" height="18" '
+    'aria-hidden="true" focusable="false" fill="currentColor">'
+    '<path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 '
+    '2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A'
+    '2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521'
+    '-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 '
+    '0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 '
+    '2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 '
+    '2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1'
+    '-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a'
+    '2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52z'
+    'M15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 '
+    '15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>'
+)
 OUTPUT_MARKER = ".generated-by-jps-site-build"
 GENERATOR_ID = "jps-site-build"
+# Content hash of the stylesheet, appended as ?v= so a rebuilt CSS always defeats browser cache.
+STYLES_HASH = hashlib.sha256((WEB_ROOT / "static" / "styles.css").read_bytes()).hexdigest()[:8]
 _SHA_RE = re.compile(r"\A[0-9a-f]{7,40}\Z")
 
 
@@ -157,6 +189,30 @@ EXAMPLE_GUIDES = {
             "Remove demo copy is only a display label: it never deletes, retains, or authorizes disposition of any real record.",
         ),
     ),
+    "supplier-invoice-approval.json": ExampleGuide(
+        focus="A business approve / manual-review / escalate / reject decision gated on evidence.",
+        demonstrates=(
+            "A synthetic accounts-payable pack with applicability, three required evidence items, a cited "
+            "source, four outcomes, exact-match and compound rules, a suspected-duplicate exception, a "
+            "manual-review fallback, and explicit escalation."
+        ),
+        good_for=(
+            "Seeing how required evidence, a variance threshold, and a restricted-supplier check combine into one automatic-approval decision.",
+            "Tracing every outcome, evidence, and source id from its declaration to each local reference.",
+            "Contrasting the automatic approve path with the manual-review, escalate, and reject paths in one document.",
+        ),
+        edges=(
+            "Only context=training-fixture is applicable; any other context is outside the example's declared scope.",
+            "A restricted supplier rejects and a variance above the declared tolerance escalates; both outrank the automatic path in the informative model.",
+            "With all required evidence present, an in-tolerance invoice from a non-restricted supplier follows the automatic approve path.",
+            "A suspected-duplicate flag forces manual review; missing required evidence instead requests the configured handoff.",
+        ),
+        failure_paths=(
+            "In a scratch copy, remove the goods-receipt evidence declaration while keeping a reference to it; the document keeps a valid JSON shape but must fail semantic document conformance.",
+            "Point fallbackOutcome at an undeclared outcome id to produce a dangling-reference semantic failure.",
+            "Approve, escalate, and reject are only display labels; never treat them as authorization to pay, hold, or refuse a real invoice.",
+        ),
+    ),
 }
 
 
@@ -165,8 +221,16 @@ PAGES = (
         "README.md",
         PurePosixPath("index.html"),
         "Judgment Pack Specification",
-        "A research preview of a portable, vendor-neutral representation for reusable organizational judgment.",
+        "Judgment Pack is an open specification for representing, testing, and exchanging the evidence, rules, exceptions, uncertainty, escalation criteria, and evaluations behind AI decisions.",
         "overview",
+        source_ref="main",
+    ),
+    Page(
+        "docs/why.md",
+        PurePosixPath("why/index.html"),
+        "Why Judgment Pack?",
+        "Why executable, testable judgment is the missing layer for reliable business agents — and how a Judgment Pack provides it.",
+        "why",
         source_ref="main",
     ),
     Page(
@@ -176,6 +240,15 @@ PAGES = (
         "The normative prose for JPS carrier, structural, and semantic document conformance.",
         "spec",
         "Normative prose",
+    ),
+    Page(
+        "docs/field-guide.md",
+        PurePosixPath("field-guide/index.html"),
+        "Field guide",
+        "An informative, plain-language walkthrough of every part of a Judgment Pack document.",
+        "field-guide",
+        "Informative guide",
+        source_ref="main",
     ),
     Page(
         "TESTING.md",
@@ -197,8 +270,8 @@ PAGES = (
         "GOVERNANCE.md",
         PurePosixPath("project/governance/index.html"),
         "Governance",
-        "How decisions are made during research incubation and how governance may evolve.",
-        "project",
+        "How the open, vendor-neutral specification is governed and how to participate.",
+        "governance",
     ),
     Page(
         "ROADMAP.md",
@@ -259,16 +332,16 @@ PAGES = (
     Page(
         "docs/origin-and-boundary.md",
         PurePosixPath("project/origin-and-boundary/index.html"),
-        "Origin and boundary",
-        "The relationship between the vendor-neutral proposal and Protoss AI.",
+        "Origin and scope",
+        "How the specification is developed independently of any single implementation.",
         "project",
         source_ref="main",
     ),
     Page(
         "docs/tooling-architecture.md",
         PurePosixPath("project/tooling/index.html"),
-        "Tooling architecture",
-        "Why the separate protoss-cli repository owns the protoss spec command namespace.",
+        "Specification and implementation boundary",
+        "Why the specification stays independent of any particular tool or implementation.",
         "project",
         source_ref="main",
     ),
@@ -305,12 +378,13 @@ PAGES = (
 
 NAVIGATION = (
     ("overview", "Overview", PurePosixPath("index.html")),
+    ("why", "Why", PurePosixPath("why/index.html")),
     ("spec", "Specification", PurePosixPath("spec/0.1.0-draft/index.html")),
-    ("testing", "Test the preview", PurePosixPath("testing/index.html")),
+    ("field-guide", "Field guide", PurePosixPath("field-guide/index.html")),
     ("examples", "Examples", PurePosixPath("examples/index.html")),
     ("conformance", "Conformance", PurePosixPath("conformance/index.html")),
     ("implementations", "Implementations", PurePosixPath("implementations/index.html")),
-    ("project", "Project", PurePosixPath("project/index.html")),
+    ("governance", "Governance", PurePosixPath("project/governance/index.html")),
 )
 
 
@@ -404,7 +478,15 @@ def strip_front_matter(text: str) -> str:
 
 
 def home_body(text: str) -> str:
-    """Remove repository-only title/status chrome replaced by the site hero."""
+    """Return the shared overview content for the site homepage, dropping repository-only
+    chrome (title, badges, status callout, and the README hero/diagram) that the site
+    replaces with its own hero. A ``<!-- site-overview -->`` marker delimits the shared
+    content; everything above it is GitHub-README-only. Falls back to stripping the leading
+    title, one badge line, and the status blockquote when the marker is absent."""
+    marker = "<!-- site-overview -->"
+    index = text.find(marker)
+    if index >= 0:
+        return text[index + len(marker) :].lstrip("\n")
     lines = text.splitlines()
     if lines and lines[0].startswith("# "):
         lines = lines[1:]
@@ -446,6 +528,15 @@ def render_markdown(
     return body, renderer.toc
 
 
+def nav_icon_anchor(url: str, label: str, svg: str) -> str:
+    """External community icon link: new tab, accessible name, tooltip, keyboard-focusable."""
+    return (
+        f'<a class="nav-icon" href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
+        f'aria-label="{html.escape(label, quote=True)}" title="{html.escape(label, quote=True)}">'
+        f"{svg}</a>"
+    )
+
+
 def nav_html(current: PurePosixPath, active: str) -> str:
     links = []
     for key, label, target in NAVIGATION:
@@ -460,20 +551,43 @@ def nav_html(current: PurePosixPath, active: str) -> str:
             f'<li><a href="{html.escape(output_href(current, target))}"{current_attr}>'
             f"{html.escape(label)}</a></li>"
         )
-    return '<ul class="primary-nav">' + "".join(links) + "</ul>"
+    text_nav = '<ul class="primary-nav">' + "".join(links) + "</ul>"
+    icons = (
+        nav_icon_anchor(GITHUB_URL, "View the specification on GitHub", GITHUB_ICON_SVG)
+        + nav_icon_anchor(SLACK_URL, "Join the Judgment Pack community", SLACK_ICON_SVG)
+    )
+    # JS-free responsive nav: a hidden, focusable checkbox toggles the collapsed link
+    # list on small screens; the icons and hamburger label stay visible beside it.
+    toggle = '<input type="checkbox" id="nav-menu-toggle" class="nav-toggle-input">'
+    hamburger = (
+        '<label for="nav-menu-toggle" class="nav-toggle">'
+        '<span class="nav-toggle-bars" aria-hidden="true"></span>'
+        '<span class="visually-hidden">Menu</span></label>'
+    )
+    actions = f'<div class="nav-actions">{icons}{hamburger}</div>'
+    return toggle + text_nav + actions
 
 
 def footer_html(current: PurePosixPath) -> str:
-    targets = (
-        ("Contribute", PurePosixPath("project/contributing/index.html")),
-        ("Security", PurePosixPath("project/security/index.html")),
+    internal = (
+        ("Governance", PurePosixPath("project/governance/index.html")),
+        ("Contributing", PurePosixPath("project/contributing/index.html")),
+        ("Code of conduct", PurePosixPath("project/code-of-conduct/index.html")),
         ("Apache-2.0", PurePosixPath("project/license/index.html")),
-        ("Source on GitHub", "https://github.com/Judgment-Pack/judgment-pack-spec"),
     )
-    links = []
-    for label, target in targets:
-        href = target if isinstance(target, str) else output_href(current, target)
-        links.append(f'<a href="{html.escape(href)}">{html.escape(label)}</a>')
+    external = (
+        ("GitHub", GITHUB_URL, "View the specification on GitHub"),
+        ("Slack", SLACK_URL, "Join the Judgment Pack community"),
+    )
+    links = [
+        f'<a href="{html.escape(output_href(current, target))}">{html.escape(label)}</a>'
+        for label, target in internal
+    ]
+    for label, url, title in external:
+        links.append(
+            f'<a href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
+            f'title="{html.escape(title, quote=True)}">{html.escape(label)}</a>'
+        )
     config = active_config()
     build_stamp = ""
     if config.commit_sha:
@@ -483,7 +597,9 @@ def footer_html(current: PurePosixPath) -> str:
             f" · {html.escape(config.build_time)}</span>"
         )
     return (
-        "<span>JPS research preview</span><span>"
+        '<span class="footer-tagline">Judgment Pack is an open, vendor-neutral specification for '
+        "executable and testable AI judgment.</span>"
+        '<span class="footer-links">'
         + " · ".join(links)
         + "</span>"
         + build_stamp
@@ -507,7 +623,7 @@ def page_html(
     noindex: bool = False,
 ) -> str:
     config = active_config()
-    stylesheet = output_href(output, PurePosixPath("assets/styles.css"))
+    stylesheet = output_href(output, PurePosixPath("assets/styles.css")) + f"?v={STYLES_HASH}"
     favicon = output_href(output, PurePosixPath("assets/favicon.svg"))
     home = output_href(output, PurePosixPath("index.html"))
     source_link = ""
@@ -623,6 +739,156 @@ def raw_block(text: str, language: str = "json") -> str:
     )
 
 
+# One human-readable definition per JSON key, derived from the normative schema. Each entry is
+# (summary, allowed-values-or-None). Powers the clickable-key cards and the schema field reference.
+KEY_REFERENCE: dict[str, tuple[str, tuple[str, ...] | None]] = {
+    "specVersion": ("The JPS specification version this document targets.", ("0.1.0-draft",)),
+    "id": ("A stable identifier. At the top level it is the pack's globally unique URI; inside outcomes, rules, evidence requirements, sources, and exceptions it is a pack-local id (lowercase, hyphenated).", None),
+    "version": ("The pack's own semantic version (MAJOR.MINOR.PATCH), separate from specVersion.", None),
+    "title": ("A short human-readable name for the pack.", None),
+    "description": ("Human-readable prose for the pack, or for a rule, outcome, evidence requirement, or exception.", None),
+    "decision": ("The single decision this pack is about, as an intent and a question.", None),
+    "intent": ("What the decision is meant to determine, in the author's words.", None),
+    "question": ("The specific question the pack answers.", None),
+    "applicability": ("An optional condition that delimits when the whole pack applies; if it does not hold, the pack is not applicable.", None),
+    "evidenceRequirements": ("The evidence a decision may draw on. Each item is declared once and referenced by id.", None),
+    "required": ("Whether an evidence requirement must be present.", ("true", "false")),
+    "kind": ("A category. Evidence: document/fact/measurement/attestation. Source locator: uri/repository/path/other. Escalation target: human-role/queue/system.", ("document", "fact", "measurement", "attestation", "uri", "repository", "path", "other", "human-role", "queue", "system")),
+    "sources": ("Provenance: the cited references the pack relies on.", None),
+    "publisher": ("Who published a source.", None),
+    "publishedAt": ("A source's publication date (YYYY-MM-DD).", None),
+    "locator": ("Where a source can be found: a kind and a value.", None),
+    "value": ("An operand or literal. In a fact condition, the value compared with operator (a decimal string for ordered comparisons, an array for `in`); in a literal condition, a boolean; in a source locator, the locator string.", None),
+    "citation": ("The specific location and excerpt within a source.", None),
+    "location": ("Where in a source the cited passage appears.", None),
+    "excerpt": ("The quoted passage from a source.", None),
+    "rights": ("Usage or licensing information for a source.", None),
+    "outcomes": ("The possible results of the decision (at least two). Each has an id and a label.", None),
+    "label": ("The human-readable name shown for an outcome.", None),
+    "rules": ("The decision rules (at least one). Each declares a condition and the outcome it selects.", None),
+    "when": ("The condition under which a rule or exception applies.", None),
+    "outcome": ("For a rule, the outcome id selected when its condition holds; for a force-outcome exception, the outcome forced.", None),
+    "onUnknown": ("How to treat a rule or exception whose condition cannot be evaluated.", ("ignore", "escalate")),
+    "evidenceRequirementRefs": ("Evidence requirement ids a rule depends on.", None),
+    "sourceRefs": ("Source ids a rule or exception is grounded in.", None),
+    "rationale": ("Why a rule exists, recorded for human review.", None),
+    "exceptions": ("Overrides that change the ordinary outcome under specific conditions.", None),
+    "effect": ("What an exception does.", ("suppress-rule", "force-outcome", "escalate")),
+    "targetRule": ("The rule id a suppress-rule exception disables.", None),
+    "fallbackOutcome": ("The outcome id used when no rule matches (informative model).", None),
+    "escalation": ("Handoff configuration: when and to whom the decision is escalated. Not itself an outcome.", None),
+    "triggers": ("The situations that cause escalation.", ("not-applicable", "missing-required-evidence", "unknown", "conflict", "no-match")),
+    "target": ("The escalation destination: a kind and a name.", None),
+    "name": ("The name of an escalation target, such as a role or a queue.", None),
+    "message": ("Guidance shown when escalating.", None),
+    "metadata": ("Non-normative bookkeeping: authors, timestamps, license, reviews, required extensions.", None),
+    "authors": ("Who authored the pack.", None),
+    "createdAt": ("When the pack was created (ISO-8601 date-time).", None),
+    "license": ("The pack's license.", None),
+    "requiredExtensions": ("Extension namespaces an implementation must understand to use the pack.", None),
+    "reviews": ("A record of human reviews of the pack.", None),
+    "reviewer": ("Who reviewed the pack.", None),
+    "reviewedAt": ("When a review occurred.", None),
+    "disposition": ("A review's conclusion.", ("approved", "changes-requested", "rejected")),
+    "note": ("A reviewer's note.", None),
+    "extensions": ("Namespaced additional data with reverse-DNS keys; org.judgmentpack.* is reserved.", None),
+    "condition": ("A nested condition, used by the `not` operator.", None),
+    "conditions": ("The list of sub-conditions combined by `all` or `any`.", None),
+    "op": ("The kind of condition.", ("fact", "all", "any", "not", "evidence-present", "literal")),
+    "path": ("A JSON Pointer to the fact a fact-condition reads.", None),
+    "operator": ("The comparison a fact condition applies.", ("equals", "not-equals", "greater-than", "greater-than-or-equal", "less-than", "less-than-or-equal", "in")),
+    "evidenceRequirement": ("The evidence requirement id an evidence-present condition checks.", None),
+}
+
+
+def _key_link(key: str) -> str:
+    display = html.escape(json.dumps(key))
+    if key in KEY_REFERENCE:
+        return f'<a class="jkey" href="#kd-{html.escape(key)}">{display}</a>'
+    return display
+
+
+def _json_scalar(value: object) -> str:
+    if isinstance(value, bool):
+        return '<span class="jbool">' + ("true" if value else "false") + "</span>"
+    if value is None:
+        return '<span class="jnull">null</span>'
+    if isinstance(value, (int, float)):
+        return '<span class="jnum">' + html.escape(json.dumps(value)) + "</span>"
+    if isinstance(value, str):
+        return '<span class="jstr">' + html.escape(json.dumps(value)) + "</span>"
+    return html.escape(json.dumps(value))
+
+
+def _annotate(value: object, indent: int) -> str:
+    pad = "  " * indent
+    pad1 = "  " * (indent + 1)
+    if isinstance(value, dict):
+        if not value:
+            return "{}"
+        items = list(value.items())
+        rows = [
+            pad1 + _key_link(k) + ": " + _annotate(v, indent + 1) + ("," if i < len(items) - 1 else "")
+            for i, (k, v) in enumerate(items)
+        ]
+        return "{\n" + "\n".join(rows) + "\n" + pad + "}"
+    if isinstance(value, list):
+        if not value:
+            return "[]"
+        rows = [
+            pad1 + _annotate(v, indent + 1) + ("," if i < len(value) - 1 else "")
+            for i, v in enumerate(value)
+        ]
+        return "[\n" + "\n".join(rows) + "\n" + pad + "]"
+    return _json_scalar(value)
+
+
+def _keydef_cards(current: PurePosixPath) -> str:
+    parts = [
+        '<p class="kd-hint">Click a highlighted key in the document to see what it means and its '
+        "allowed values.</p>"
+    ]
+    for key, (summary, values) in KEY_REFERENCE.items():
+        vals = ""
+        if values:
+            chips = " ".join("<code>" + html.escape(v) + "</code>" for v in values)
+            vals = '<p class="kd-values"><span>One of:</span> ' + chips + "</p>"
+        parts.append(
+            '<div class="keydef" id="kd-' + html.escape(key) + '">'
+            + "<h4><code>" + html.escape(key) + "</code></h4>"
+            + "<p>" + html.escape(summary) + "</p>" + vals + "</div>"
+        )
+    guide = output_href(current, PurePosixPath("field-guide/index.html"))
+    parts.append(
+        '<p class="kd-more"><a href="' + html.escape(guide) + '">Full field guide &rarr;</a></p>'
+    )
+    return '<aside class="keydefs" aria-label="Key reference">' + "".join(parts) + "</aside>"
+
+
+def annotated_json_block(value: object, current: PurePosixPath) -> str:
+    """A JSON code block whose keys link to a side panel of schema definitions (no JavaScript)."""
+    code = (
+        '<div class="code-frame annotated-frame"><pre tabindex="0">'
+        '<code class="language-json">' + _annotate(value, 0) + "</code></pre></div>"
+    )
+    return '<div class="annotated-json">' + code + _keydef_cards(current) + "</div>"
+
+
+def field_reference_html() -> str:
+    """The full key reference as a definition list, for the schema page."""
+    rows = []
+    for key, (summary, values) in KEY_REFERENCE.items():
+        vals = ""
+        if values:
+            chips = " ".join("<code>" + html.escape(v) + "</code>" for v in values)
+            vals = ' <span class="kd-values">One of: ' + chips + "</span>"
+        rows.append(
+            "<div><dt><code>" + html.escape(key) + "</code></dt><dd>"
+            + html.escape(summary) + vals + "</dd></div>"
+        )
+    return '<dl class="field-reference">' + "".join(rows) + "</dl>"
+
+
 def tag(text: str, kind: str = "neutral") -> str:
     return f'<span class="tag tag-{html.escape(kind)}">{html.escape(text)}</span>'
 
@@ -721,14 +987,15 @@ Use only a minimal synthetic reproduction, then
             hero = f"""
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero-copy">
-    <p class="eyebrow">Portable judgment, explicitly bounded</p>
-    <h1 id="hero-title">Judgment Pack Specification</h1>
-    <p class="hero-lede">A vendor-neutral research proposal for representing reusable
-    organizational judgment as inspectable JSON documents.</p>
+    <p class="eyebrow">Open, vendor-neutral specification</p>
+    <h1 id="hero-title">Make expert judgment executable and testable.</h1>
+    <p class="hero-lede">Judgment Pack is an open specification for representing the evidence, rules,
+    exceptions, uncertainty, escalation criteria, and evaluations behind an AI agent's decisions.</p>
     <div class="hero-actions">
-      <a class="button button-primary" href="{html.escape(output_href(page.output, PurePosixPath('spec/0.1.0-draft/index.html')))}">Read the core specification</a>
-      <a class="button button-secondary" href="{html.escape(output_href(page.output, PurePosixPath('testing/index.html')))}">Try the 15-minute test</a>
+      <a class="button button-primary" href="{html.escape(output_href(page.output, PurePosixPath('spec/0.1.0-draft/index.html')))}">Read the specification</a>
+      <a class="button button-secondary" href="{html.escape(GITHUB_URL)}" target="_blank" rel="noopener noreferrer">View on GitHub</a>
     </div>
+    <p class="hero-support"><a href="{html.escape(output_href(page.output, PurePosixPath('why/index.html')))}">Why Judgment Pack?</a></p>
   </div>
   <div class="scope-card" aria-label="Current scope">
     <p class="scope-card-title">What this draft can test</p>
@@ -781,6 +1048,10 @@ or operational fitness.</div>
   <div><dt>Definitions</dt><dd>{len(definitions)}</dd></div>
 </dl>
 <p>{source_link(page_output, source)}</p>
+<h2 id="field-reference">Field reference</h2>
+<p>Every field and its allowed values, generated from the schema. The same definitions appear as
+clickable cards beside each example document.</p>
+{field_reference_html()}
 <h2 id="raw-schema">Raw schema</h2>
 {raw_block(raw)}
 """
@@ -862,8 +1133,10 @@ not assert a portable evaluator result.</p>
 schema-shape failure, and a dangling local reference fail at different document-conformance layers.
 Missing evidence, unknown facts, conflicts, and no-match handling belong to the informative
 resolution experiment because JPS 0.1.0-draft defines no evaluator conformance class.</div>
-<h2 id="document">Document</h2>
-{raw_block(raw)}
+<h2 id="document">Annotated document</h2>
+<p>The complete validated pack. Each highlighted key links to its definition on the right — click a
+key to see what it means and its allowed values.</p>
+{annotated_json_block(value, detail_output)}
 """
         rendered = page_html(
             output=detail_output,
@@ -897,9 +1170,8 @@ each page explain illustrative applicability, evidence, unknown, conflict, and f
 without claiming an expected runtime decision. Validity never proves truth, authority, safety, or
 fitness.</p>
 <p>For the structural baseline, use an independent Draft 2020-12 implementation and inspect
-semantic references separately. For all current JPS document-conformance layers, the separate,
-nonnormative <a href="{html.escape(output_href(index_output, PurePosixPath('cli/index.html')))}">Protoss CLI</a>
-is one available local tool.</p>
+semantic references separately. Conforming tools that check all current JPS document-conformance
+layers are listed on the <a href="{html.escape(output_href(index_output, PurePosixPath('implementations/index.html')))}">Implementations</a> page.</p>
 <div class="card-grid">{''.join(cards)}</div>
 """
     rendered = page_html(
@@ -1096,9 +1368,8 @@ def build_project_index(output_root: Path) -> None:
             (
                 ("Design principles", "Constraints that shape JPS.", "project/design-principles/index.html"),
                 ("Non-goals", "What JPS intentionally does not standardize.", "project/non-goals/index.html"),
-                ("Origin and boundary", "How JPS relates to Protoss AI.", "project/origin-and-boundary/index.html"),
-                ("Protoss CLI", "Install and use nonnormative protoss spec commands.", "cli/index.html"),
-                ("Tooling architecture", "The separate protoss CLI repository boundary.", "project/tooling/index.html"),
+                ("Origin and scope", "How the specification stays independent of any implementation.", "project/origin-and-boundary/index.html"),
+                ("Specification and implementation boundary", "Why the spec is usable without any particular tool.", "project/tooling/index.html"),
                 ("Site deployment", "Build, preview, and hosting guidance.", "project/deployment/index.html"),
             ),
         ),

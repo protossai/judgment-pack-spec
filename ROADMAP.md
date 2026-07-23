@@ -18,7 +18,7 @@ Exit evidence:
 - at least five substantive external design reviews;
 - examples from three unrelated domains;
 - documented resolution of major terminology and scope objections;
-- no requirement for Protoss product services to interpret the examples.
+- no requirement for any particular product or service to interpret the examples.
 
 ## Stage 2 — Developer preview
 
@@ -27,7 +27,7 @@ Goals:
 - publish a reference validator and machine-readable diagnostic format;
 - expand positive, negative, boundary, and adversarial conformance cases;
 - add a constrained YAML authoring profile if lossless conversion is proven;
-- validate authoring ergonomics with developers outside Protoss.
+- validate authoring ergonomics with independent developers.
 
 Exit evidence:
 
@@ -48,7 +48,7 @@ Goals:
 Exit evidence:
 
 - two independent validators in different languages;
-- three production adopters, not all customers of Protoss;
+- three independent production adopters;
 - no unresolved disagreement on normative conformance outcomes;
 - demonstrated export and import between competing implementations.
 

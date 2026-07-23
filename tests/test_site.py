@@ -184,8 +184,8 @@ class StaticSiteTests(unittest.TestCase):
         index = (self.output / "examples" / "index.html").read_text(encoding="utf-8")
         self.assertIn("How to use these examples", index)
         self.assertIn("structurally and semantically conforming JPS documents", index)
-        self.assertIn("Protoss CLI", index)
-        self.assertIn("one available local tool", index)
+        self.assertNotIn("Protoss", index)
+        self.assertIn("Conforming tools", index)
         self.assertIn("For the structural baseline", index)
 
         expected = {
@@ -297,7 +297,7 @@ class StaticSiteTests(unittest.TestCase):
 
     def test_cli_is_demoted_from_primary_nav_to_implementations(self) -> None:
         overview = (self.output / "index.html").read_text(encoding="utf-8")
-        nav_start = overview.index('<nav aria-label="Primary">')
+        nav_start = overview.index('aria-label="Primary"')
         primary_nav = overview[nav_start : overview.index("</nav>", nav_start)]
         # A vendor product must not sit as a peer of Specification/Conformance in primary nav.
         self.assertIn(">Implementations</a>", primary_nav)
@@ -422,6 +422,128 @@ class StaticSiteTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("--base-url is required", result.stderr)
+
+
+    def _primary_nav(self, page_html: str) -> str:
+        start = page_html.index('aria-label="Primary"')
+        return page_html[start : page_html.index("</nav>", start)]
+
+    def test_navigation_has_github_and_slack_icons(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        self.assertIn('class="nav-icon-svg"', nav)  # inline SVG, no external icon dependency
+        self.assertIn('href="https://github.com/Judgment-Pack/judgment-pack-spec"', nav)
+        self.assertIn('aria-label="View the specification on GitHub"', nav)
+        self.assertIn('title="View the specification on GitHub"', nav)
+        self.assertIn('href="https://join.slack.com/t/judgment-pack/shared_invite/zt-44qrd47ok-o_~Vk3BFDzsN~EGAPkeQBw"', nav)
+        self.assertIn('aria-label="Join the Judgment Pack community"', nav)
+        self.assertIn('title="Join the Judgment Pack community"', nav)
+        self.assertGreaterEqual(nav.count('target="_blank"'), 2)
+        self.assertGreaterEqual(nav.count('rel="noopener noreferrer"'), 2)
+
+    def test_why_and_governance_are_in_primary_navigation(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        self.assertIn(">Why</a>", nav)
+        self.assertIn(">Governance</a>", nav)
+        self.assertIn(">Implementations</a>", nav)
+
+    def test_preview_banner_is_a_collapsible_details(self) -> None:
+        page = (self.output / "index.html").read_text(encoding="utf-8")
+        # Native <details> disclosure — collapsible with no JavaScript, collapsed by default.
+        self.assertIn('<details class="preview-banner">', page)
+        self.assertNotIn('<details class="preview-banner" open>', page)
+        self.assertIn('<summary class="preview-banner-summary">', page)
+        self.assertIn("Research preview", page)
+        self.assertIn(
+            "No compatibility guarantee. Not for consequential production decisions.",
+            page,
+        )
+
+    def test_mobile_nav_uses_a_jsfree_hamburger_with_icons(self) -> None:
+        nav = self._primary_nav((self.output / "index.html").read_text(encoding="utf-8"))
+        # A checkbox + <label for> toggle: pure CSS, no JavaScript or inline handlers.
+        self.assertIn('<input type="checkbox" id="nav-menu-toggle"', nav)
+        self.assertIn('<label for="nav-menu-toggle" class="nav-toggle">', nav)
+        self.assertNotIn("onclick", nav)
+        # The two community icons stay visible beside the hamburger (not hidden in the menu).
+        actions = nav[nav.index('class="nav-actions"') :]
+        self.assertEqual(actions.count('class="nav-icon"'), 2)
+        self.assertIn("nav-toggle", actions)
+
+    def test_no_javascript_anywhere_in_rendered_pages(self) -> None:
+        # script-src 'none' is a hard invariant: no <script> tag or inline handler in any page.
+        for path in self.output.rglob("*.html"):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(self.output)
+            self.assertNotIn("<script", text, f"{rel} contains a <script> tag")
+            self.assertNotIn("onclick", text, f"{rel} contains an inline handler")
+            self.assertNotIn("javascript:", text, f"{rel} contains a javascript: URL")
+
+    def test_why_page_explains_motivation(self) -> None:
+        why = (self.output / "why" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("<title>Why Judgment Pack? — JPS</title>", why)
+        for phrase in (
+            "Why coding agents work better",
+            "Coding agents have compilers and tests.",
+            "Knowledge helps an agent",
+            "Determines applicability",
+            "What Judgment Pack is not",
+            "supplier invoice",
+        ):
+            self.assertIn(phrase, why)
+        # Links to the full example and the specification, rewritten to real site routes.
+        self.assertIn('href="../examples/supplier-invoice-approval/"', why)
+        self.assertIn('href="../spec/0.1.0-draft/"', why)
+        self.assertNotIn("Protoss", why)
+
+    def test_neutral_pages_contain_no_protoss(self) -> None:
+        # Protoss is confined to the Implementations section; every other page is vendor-neutral.
+        allowed = {"cli/index.html", "implementations/index.html"}
+        offenders = []
+        for page in self.output.rglob("*.html"):
+            rel = page.relative_to(self.output).as_posix()
+            if rel in allowed:
+                continue
+            if "protoss" in page.read_text(encoding="utf-8").lower():
+                offenders.append(rel)
+        self.assertEqual([], offenders, f"Protoss appears on neutral pages: {offenders}")
+
+    def test_footer_has_tagline_and_community_links(self) -> None:
+        overview = (self.output / "index.html").read_text(encoding="utf-8")
+        footer = overview[overview.index("<footer") :]
+        self.assertIn(
+            "open, vendor-neutral specification for executable and testable AI judgment", footer
+        )
+        self.assertIn('href="https://github.com/Judgment-Pack/judgment-pack-spec"', footer)
+        self.assertIn('href="https://join.slack.com/t/judgment-pack/shared_invite/zt-44qrd47ok-o_~Vk3BFDzsN~EGAPkeQBw"', footer)
+        self.assertIn(">Apache-2.0</a>", footer)
+
+    def test_supplier_invoice_example_is_published(self) -> None:
+        detail = self.output / "examples" / "supplier-invoice-approval" / "index.html"
+        self.assertTrue(detail.is_file())
+        content = detail.read_text(encoding="utf-8")
+        self.assertIn("Guide to this example", content)
+        self.assertIn("invoice", content.lower())
+        index = (self.output / "examples" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("supplier-invoice-approval/", index)
+
+
+    def test_example_json_keys_link_to_definition_cards(self) -> None:
+        page = self.output / "examples" / "supplier-invoice-approval" / "index.html"
+        detail = page.read_text(encoding="utf-8")
+        for key in ("op", "operator", "when", "outcome", "onUnknown", "effect"):
+            self.assertIn(f'<a class="jkey" href="#kd-{key}">', detail)
+            self.assertIn(f'<div class="keydef" id="kd-{key}">', detail)
+        # Cards carry allowed values pulled from the schema.
+        self.assertIn("greater-than", detail)
+        self.assertIn("evidence-present", detail)
+        # Fully JS-free: script-src 'none' stays intact.
+        self.assertEqual(inspect(page).scripts, 0)
+
+    def test_schema_page_has_a_field_reference(self) -> None:
+        schema = (self.output / "schema" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<dl class="field-reference">', schema)
+        self.assertIn("<dt><code>op</code></dt>", schema)
+        self.assertIn("<dt><code>operator</code></dt>", schema)
 
 
 if __name__ == "__main__":

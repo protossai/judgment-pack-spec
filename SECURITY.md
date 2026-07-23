@@ -11,9 +11,9 @@ Do not open a public issue for a vulnerability that could expose data, bypass va
 resource exhaustion, execute untrusted content, forge provenance, or confuse conformance with
 authorization.
 
-Use GitHub's private vulnerability reporting or a private security advisory for this repository
-once enabled. If that mechanism is unavailable, contact the Protoss AI organization privately and
-include:
+Use GitHub's private vulnerability reporting for this repository (Security -> Report a
+vulnerability), or open a minimal non-sensitive issue asking a maintainer to establish a private
+channel. Include:
 
 - affected draft or artifact;
 - minimal reproduction;

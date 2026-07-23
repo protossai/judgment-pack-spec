@@ -33,7 +33,7 @@ targets, evaluation methods, signatures, and enterprise governance should evolve
 
 ## Independent implementation
 
-The prose specification, schemas, and conformance cases—not a Protoss codebase—define portable
+The prose specification, schemas, and conformance cases—not any single vendor's codebase—define portable
 behavior. A stable feature should have at least two independent implementations.
 
 ## Honest partial support

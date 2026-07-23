@@ -1,0 +1,184 @@
+{
+  "specVersion": "0.1.0-draft",
+  "id": "https://example.invalid/judgment-packs/supplier-invoice-approval",
+  "version": "0.1.0",
+  "title": "Synthetic supplier invoice approval",
+  "description": "A non-operational example for discussing the schema. It labels a fictional training-fixture invoice and does not authorize any payment or represent a real accounts-payable policy.",
+  "decision": {
+    "intent": "Determine whether a fictional supplier invoice may be automatically approved, sent to manual review, escalated, or rejected in a training-fixture context.",
+    "question": "Should this supplier invoice be approved automatically?"
+  },
+  "applicability": {
+    "op": "fact",
+    "path": "/invoice/context",
+    "operator": "equals",
+    "value": "training-fixture"
+  },
+  "evidenceRequirements": [
+    {
+      "id": "purchase-order",
+      "description": "An invented matching purchase order for the fictional invoice.",
+      "required": true,
+      "kind": "document"
+    },
+    {
+      "id": "goods-receipt",
+      "description": "An invented goods receipt confirming the fictional order was received in full.",
+      "required": true,
+      "kind": "document"
+    },
+    {
+      "id": "tax-information",
+      "description": "The required tax information for the fictional supplier and invoice.",
+      "required": true,
+      "kind": "fact"
+    }
+  ],
+  "sources": [
+    {
+      "id": "invoice-policy",
+      "title": "Fictional supplier invoice approval checklist",
+      "publisher": "Example Learning Lab",
+      "publishedAt": "2026-07-01",
+      "locator": {
+        "kind": "uri",
+        "value": "https://example.invalid/checklists/supplier-invoice-approval"
+      },
+      "citation": {
+        "location": "Illustrative approval section",
+        "excerpt": "An invoice with a matching purchase order, a complete goods receipt, required tax information, and an amount within tolerance may follow the automatic path. Restricted suppliers are rejected."
+      },
+      "rights": "Invented content for specification testing; not an operational policy."
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "approve",
+      "label": "Approve",
+      "description": "The invented evidence and declared rules support the automatic path in the fictional scenario."
+    },
+    {
+      "id": "manual-review",
+      "label": "Manual review",
+      "description": "An accountable accounts-payable reviewer must decide."
+    },
+    {
+      "id": "escalate",
+      "label": "Escalate",
+      "description": "The fictional variance exceeds the declared threshold and needs a person to look at it."
+    },
+    {
+      "id": "reject",
+      "label": "Reject",
+      "description": "The fictional supplier is marked restricted."
+    }
+  ],
+  "rules": [
+    {
+      "id": "restricted-supplier",
+      "description": "Reject the fictional invoice when its supplier is marked restricted.",
+      "when": {
+        "op": "fact",
+        "path": "/supplier/restricted",
+        "operator": "equals",
+        "value": true
+      },
+      "outcome": "reject",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["tax-information"],
+      "sourceRefs": ["invoice-policy"],
+      "rationale": "The example checklist rejects invoices from restricted suppliers."
+    },
+    {
+      "id": "variance-over-tolerance",
+      "description": "Escalate the fictional invoice when its amount variance exceeds the declared tolerance.",
+      "when": {
+        "op": "fact",
+        "path": "/invoice/variancePercent",
+        "operator": "greater-than",
+        "value": "2.5"
+      },
+      "outcome": "escalate",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["purchase-order"],
+      "sourceRefs": ["invoice-policy"],
+      "rationale": "The example checklist sends variances above the tolerance to a person."
+    },
+    {
+      "id": "standard-invoice",
+      "description": "Approve a supported fictional invoice within tolerance when all required evidence is present and the supplier is not restricted.",
+      "when": {
+        "op": "all",
+        "conditions": [
+          {
+            "op": "fact",
+            "path": "/invoice/variancePercent",
+            "operator": "less-than-or-equal",
+            "value": "2.5"
+          },
+          {
+            "op": "not",
+            "condition": {
+              "op": "fact",
+              "path": "/supplier/restricted",
+              "operator": "equals",
+              "value": true
+            }
+          },
+          {
+            "op": "evidence-present",
+            "evidenceRequirement": "purchase-order"
+          },
+          {
+            "op": "evidence-present",
+            "evidenceRequirement": "goods-receipt"
+          },
+          {
+            "op": "evidence-present",
+            "evidenceRequirement": "tax-information"
+          }
+        ]
+      },
+      "outcome": "approve",
+      "onUnknown": "escalate",
+      "evidenceRequirementRefs": ["purchase-order", "goods-receipt", "tax-information"],
+      "sourceRefs": ["invoice-policy"],
+      "rationale": "Ordinary supported invoices within tolerance may follow the automatic path."
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "suspected-duplicate",
+      "description": "A fictional invoice flagged as a suspected duplicate requires human review.",
+      "when": {
+        "op": "fact",
+        "path": "/invoice/duplicateSuspected",
+        "operator": "equals",
+        "value": true
+      },
+      "effect": "force-outcome",
+      "outcome": "manual-review",
+      "onUnknown": "escalate"
+    }
+  ],
+  "fallbackOutcome": "manual-review",
+  "escalation": {
+    "triggers": [
+      "not-applicable",
+      "missing-required-evidence",
+      "unknown",
+      "conflict",
+      "no-match"
+    ],
+    "target": {
+      "kind": "human-role",
+      "name": "Accounts payable reviewer"
+    },
+    "message": "Review only synthetic training inputs: the invoice, the matching purchase order, the goods receipt, tax information, the cited checklist, missing evidence, and conflicting rules; do not release any payment."
+  },
+  "metadata": {
+    "authors": ["Judgment Pack Specification contributors"],
+    "createdAt": "2026-07-22T00:00:00Z",
+    "license": "Apache-2.0"
+  }
+}

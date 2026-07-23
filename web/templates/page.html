@@ -16,19 +16,24 @@
   </head>
   <body class="$body_class">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <div class="preview-banner" role="note">
-      <strong>Research preview · $version</strong>
-      <span>No compatibility guarantee. Not for consequential production decisions.</span>
+    <div class="site-top">
+      <details class="preview-banner">
+        <summary class="preview-banner-summary">
+          <strong>Research preview · $version</strong>
+          <span class="preview-banner-chevron" aria-hidden="true"></span>
+        </summary>
+        <p class="preview-banner-detail">No compatibility guarantee. Not for consequential production decisions.</p>
+      </details>
+      <header class="site-header">
+        <div class="header-inner">
+          <a class="brand" href="$home" aria-label="JPS home">
+            <img class="brand-mark" src="$favicon" width="32" height="32" alt="" aria-hidden="true">
+            <span>Judgment Pack Specification</span>
+          </a>
+          <nav class="site-nav" aria-label="Primary">$navigation</nav>
+        </div>
+      </header>
     </div>
-    <header class="site-header">
-      <div class="header-inner">
-        <a class="brand" href="$home" aria-label="JPS home">
-          <span class="brand-mark" aria-hidden="true">J</span>
-          <span>Judgment Pack Specification</span>
-        </a>
-        <nav aria-label="Primary">$navigation</nav>
-      </div>
-    </header>
     <div class="page-layout">
       <main id="main-content" tabindex="-1">
         $hero

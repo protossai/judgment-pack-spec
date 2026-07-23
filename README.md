@@ -1,33 +1,73 @@
 # Judgment Pack Specification
 
 [![Repository conformance](https://github.com/Judgment-Pack/judgment-pack-spec/actions/workflows/conformance.yml/badge.svg)](https://github.com/Judgment-Pack/judgment-pack-spec/actions/workflows/conformance.yml)
+[![Join the community on Slack](https://img.shields.io/badge/Slack-Join%20the%20community-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/judgment-pack/shared_invite/zt-44qrd47ok-o_~Vk3BFDzsN~EGAPkeQBw)
 
 > **Status: Research Preview — `0.1.0-draft`**
 >
 > This repository is an early design proposal. It is not an industry standard, is not covered by
 > compatibility guarantees, and is not ready for consequential production decisions.
 
-Core `0.1.0-draft` supports testing carrier, structural, and semantic document conformance. It does
-not define evaluator conformance or a portable decision result.
+## Why judgment needs its own layer
 
-The Judgment Pack Specification (JPS) explores a portable, vendor-neutral way to represent
-reusable organizational judgment.
+<p align="center">
+  <img src="docs/assets/jp.png" width="880" alt="Two-panel comparison. Left, the Coding Agent Environment: a clear task and explicit target, executable artifacts, fast pass/fail feedback, and a stable evaluation harness (build, test, lint, CI, git, docker) — the environment supplies objective signals. Right, the Business AI Agent Environment: ambiguous goals, evidence scattered across reports, forecasts, dashboards, email, and Slack, meaning that depends on context, and delayed or subjective feedback — the environment rarely supplies a single ground truth. Conclusion: coding agents work well because their environment already knows how to check the work; business agents need an explicit judgment layer and evaluation harness.">
+</p>
 
-Traditional knowledge systems answer “what information is available?” A Judgment Pack is intended
-to make a different artifact portable: what decision is being made, what evidence it requires,
-where its claims came from, when it applies, how exceptions and uncertainty are handled, which
-outcomes are possible, and when a human must take over.
+Coding agents do useful multi-step work because they operate inside an environment that already knows how
+to judge their output: compilers, type systems, tests, linters, static analysis, version control, code
+review, and CI supply objective pass/fail signals against an explicit target.
+
+Most business AI agents lack that environment. Their goals are ambiguous, their evidence is scattered
+across documents and systems, the meaning of a term depends on context, and feedback is delayed or
+subjective — so the same decision is hard to evaluate definitively. What is missing is not more
+information; it is an explicit **judgment layer** and a way to test it.
+
+Judgment Pack makes that layer explicit. A Judgment Pack is a portable, vendor-neutral JSON document that
+declares what decision is being made, what evidence it requires, when it applies, how exceptions and
+uncertainty are handled, which outcomes are possible, and when a human must take over — so the reasoning
+behind a decision can be inspected, tested, versioned, and moved between independent tools.
+
+<!-- site-overview -->
+
+AI systems increasingly participate in business decisions, but prompts, retrieval configurations,
+and application code do not provide a stable interchange format for the judgment behind those
+decisions. The Judgment Pack Specification (JPS) explores a portable, vendor-neutral way to
+represent reusable organizational judgment so that it can be inspected, tested, and moved between
+independent tools.
+
+A Judgment Pack is a JSON document that declares a single decision: what decision is being made,
+what evidence it requires, where its claims came from, when it applies, how exceptions and
+uncertainty are handled, which outcomes are possible, and when a human must take over. It captures
+the reasoning an organization wants applied to a decision, in a form that is separate from any one
+runtime, model, or user interface.
+
+A new specification is necessary because existing artifacts each capture only part of this and none
+of them are portable:
+
+- A **knowledge base** or retrieval index answers "what information is available?" It does not
+  declare which decision that information serves, when a rule applies, or when to escalate.
+- A **prompt** couples intent to a specific model and phrasing; it is not a structured, checkable
+  document that a second tool can validate and reuse.
+- A **workflow engine** encodes control flow and orchestration, not the evidence requirements,
+  exceptions, and uncertainty handling behind a decision.
+- An **evaluation dataset** records inputs and expected outputs; it does not represent the rules and
+  reasoning being evaluated.
+
+JPS aims to make that reasoning a first-class, interchangeable document, without standardizing any
+one product, model, or workflow.
 
 ## Why this repository exists
 
-AI systems increasingly participate in business decisions, but prompts, retrieval configurations,
-and application code do not provide a stable interchange format for organizational judgment. This
-research preview exists to test whether a small declarative core can support independent tools and
-runtimes without standardizing any one product, model, or workflow.
+This research preview exists to test whether a small declarative core can support independent tools
+and runtimes without standardizing any one product, model, or workflow.
 
 The specification is successful only if independent implementations can exchange the same pack and
 agree on its document structure and declared field and reference semantics. Portable evaluation is
 a possible later profile, not a claim of this draft.
+
+Core `0.1.0-draft` supports testing carrier, structural, and semantic document conformance. It does
+not define evaluator conformance or a portable decision result.
 
 ## What JPS is
 
@@ -58,23 +98,17 @@ a possible later profile, not a claim of this draft.
 | [`TESTING.md`](TESTING.md)                                                       | A 10–15 minute external testing exercise            |
 | [`VERSIONING.md`](VERSIONING.md)                                                 | Release and compatibility policy                    |
 | [`CHANGELOG.md`](CHANGELOG.md)                                                   | Draft and published change history                  |
-| [`docs/design-principles.md`](docs/design-principles.md)                         | Design constraints                                  |
-| [`docs/non-goals.md`](docs/non-goals.md)                                         | Explicit boundary                                   |
-| [`docs/origin-and-boundary.md`](docs/origin-and-boundary.md)                     | Relationship to Protoss AI                          |
-| [`docs/cli-design.md`](docs/cli-design.md)                                       | Install and use the nonnormative Protoss CLI        |
-| [`docs/tooling-architecture.md`](docs/tooling-architecture.md)                   | Boundary for the separate `protoss` CLI             |
+| [`docs/design-principles.md`](docs/design-principles.md)                        | Design principles, non-goals, and origin and scope  |
 | [`jeps/0000-jep-process.md`](jeps/0000-jep-process.md)                           | Proposed change process                             |
 | [`ROADMAP.md`](ROADMAP.md)                                                       | Evidence-gated path toward a specification          |
 | [`web/`](web/)                                                                   | Static documentation site and deployment guide      |
 | [`.vscode/tasks.json`](.vscode/tasks.json)                                       | One-command local documentation preview             |
 
-This repository intentionally contains no end-user CLI source. The separate, public, nonnormative
-[`protoss-cli`](https://github.com/protossai/protoss-cli) repository exposes JPS tools under
-`protoss spec <command>` and consumes immutable specification releases like any other
-implementation. Its current integration boundary is the executable and versioned JSON output; no
-stable Go SDK or plugin API exists yet. See the self-contained [Protoss CLI guide](docs/cli-design.md)
-for installation and usage, and the
-[tooling architecture recommendation](docs/tooling-architecture.md).
+The `docs/` directory records the specification's design constraints, its explicit non-goals, and
+how the spec stays independent of any implementation. The specification defines documents only and
+contains no end-user tooling. Conforming implementations may be open-source or proprietary and
+consume immutable specification releases like any other implementation; see the Implementations page
+for the current landscape.
 
 ## Minimal shape
 
@@ -169,8 +203,10 @@ Start with [`TESTING.md`](TESTING.md) for a short exercise or
 Judgment Enhancement Proposal (JEP), include compatibility and security analysis, and add positive
 and negative examples.
 
-The project is initially stewarded by Protoss AI. Stewardship does not make Protoss implementations
-normative; the long-term goal is reproducible behavior across independent implementations.
+The specification is developed in public by its maintainers and community contributors. Participate
+via GitHub and the project [Slack](https://join.slack.com/t/judgment-pack/shared_invite/zt-44qrd47ok-o_~Vk3BFDzsN~EGAPkeQBw). The specification is not
+controlled by any required commercial runtime; the long-term goal is reproducible behavior across
+independent implementations, which may be open-source or proprietary.
 
 ## License
 
