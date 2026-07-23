@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import hashlib
 import posixpath
 import re
 import shutil
@@ -60,6 +61,8 @@ SLACK_ICON_SVG = (
 )
 OUTPUT_MARKER = ".generated-by-jps-site-build"
 GENERATOR_ID = "jps-site-build"
+# Content hash of the stylesheet, appended as ?v= so a rebuilt CSS always defeats browser cache.
+STYLES_HASH = hashlib.sha256((WEB_ROOT / "static" / "styles.css").read_bytes()).hexdigest()[:8]
 _SHA_RE = re.compile(r"\A[0-9a-f]{7,40}\Z")
 
 
@@ -593,7 +596,7 @@ def page_html(
     noindex: bool = False,
 ) -> str:
     config = active_config()
-    stylesheet = output_href(output, PurePosixPath("assets/styles.css"))
+    stylesheet = output_href(output, PurePosixPath("assets/styles.css")) + f"?v={STYLES_HASH}"
     favicon = output_href(output, PurePosixPath("assets/favicon.svg"))
     home = output_href(output, PurePosixPath("index.html"))
     source_link = ""
