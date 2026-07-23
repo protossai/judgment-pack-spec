@@ -726,6 +726,131 @@ main {
   color: #f4c175;
 }
 
+.annotated-json {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17rem;
+  gap: 1.25rem;
+  align-items: start;
+  margin: 1.4rem 0;
+}
+
+.annotated-json .code-frame {
+  margin: 0;
+}
+
+.annotated-frame .jkey {
+  color: #7ecec2;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.annotated-frame .jkey:hover,
+.annotated-frame .jkey:focus-visible {
+  color: #baefe4;
+  background: rgb(127 210 196 / 16%);
+  border-radius: 3px;
+}
+
+.annotated-frame .jstr {
+  color: #a9d6a2;
+}
+
+.annotated-frame .jnum {
+  color: #e6b673;
+}
+
+.annotated-frame .jbool,
+.annotated-frame .jnull {
+  color: #86bfe0;
+}
+
+.keydefs {
+  position: sticky;
+  top: 7rem;
+  align-self: start;
+}
+
+.kd-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.keydefs:has(.keydef:target) .kd-hint {
+  display: none;
+}
+
+.keydef {
+  display: none;
+  padding: 0.9rem 1rem;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.5rem;
+  scroll-margin-top: 7rem;
+}
+
+.keydef:target {
+  display: block;
+}
+
+.keydef h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.98rem;
+}
+
+.keydef p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+
+.kd-values {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+}
+
+.kd-values > span {
+  color: var(--muted);
+}
+
+.kd-values code {
+  display: inline-block;
+  margin: 0.12rem 0.15rem 0.12rem 0;
+}
+
+.kd-more {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 640;
+}
+
+.field-reference {
+  margin: 1.4rem 0;
+}
+
+.field-reference > div {
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.field-reference dt {
+  margin-bottom: 0.25rem;
+}
+
+.field-reference dt code {
+  font-weight: 700;
+}
+
+.field-reference dd {
+  margin: 0;
+}
+
+.field-reference .kd-values {
+  display: block;
+  margin-top: 0.3rem;
+}
+
 @media (max-width: 880px) {
   .site-header {
     position: static;
@@ -749,6 +874,14 @@ main {
 
   .hero {
     grid-template-columns: 1fr;
+  }
+
+  .annotated-json {
+    grid-template-columns: 1fr;
+  }
+
+  .keydefs {
+    position: static;
   }
 
   .page-layout {

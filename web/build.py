@@ -242,6 +242,15 @@ PAGES = (
         "Normative prose",
     ),
     Page(
+        "docs/field-guide.md",
+        PurePosixPath("field-guide/index.html"),
+        "Field guide",
+        "An informative, plain-language walkthrough of every part of a Judgment Pack document.",
+        "field-guide",
+        "Informative guide",
+        source_ref="main",
+    ),
+    Page(
         "TESTING.md",
         PurePosixPath("testing/index.html"),
         "Test the research preview",
@@ -371,6 +380,7 @@ NAVIGATION = (
     ("overview", "Overview", PurePosixPath("index.html")),
     ("why", "Why", PurePosixPath("why/index.html")),
     ("spec", "Specification", PurePosixPath("spec/0.1.0-draft/index.html")),
+    ("field-guide", "Field guide", PurePosixPath("field-guide/index.html")),
     ("examples", "Examples", PurePosixPath("examples/index.html")),
     ("conformance", "Conformance", PurePosixPath("conformance/index.html")),
     ("implementations", "Implementations", PurePosixPath("implementations/index.html")),
@@ -712,6 +722,156 @@ def raw_block(text: str, language: str = "json") -> str:
     )
 
 
+# One human-readable definition per JSON key, derived from the normative schema. Each entry is
+# (summary, allowed-values-or-None). Powers the clickable-key cards and the schema field reference.
+KEY_REFERENCE: dict[str, tuple[str, tuple[str, ...] | None]] = {
+    "specVersion": ("The JPS specification version this document targets.", ("0.1.0-draft",)),
+    "id": ("A stable identifier. At the top level it is the pack's globally unique URI; inside outcomes, rules, evidence requirements, sources, and exceptions it is a pack-local id (lowercase, hyphenated).", None),
+    "version": ("The pack's own semantic version (MAJOR.MINOR.PATCH), separate from specVersion.", None),
+    "title": ("A short human-readable name for the pack.", None),
+    "description": ("Human-readable prose for the pack, or for a rule, outcome, evidence requirement, or exception.", None),
+    "decision": ("The single decision this pack is about, as an intent and a question.", None),
+    "intent": ("What the decision is meant to determine, in the author's words.", None),
+    "question": ("The specific question the pack answers.", None),
+    "applicability": ("An optional condition that delimits when the whole pack applies; if it does not hold, the pack is not applicable.", None),
+    "evidenceRequirements": ("The evidence a decision may draw on. Each item is declared once and referenced by id.", None),
+    "required": ("Whether an evidence requirement must be present.", ("true", "false")),
+    "kind": ("A category. Evidence: document/fact/measurement/attestation. Source locator: uri/repository/path/other. Escalation target: human-role/queue/system.", ("document", "fact", "measurement", "attestation", "uri", "repository", "path", "other", "human-role", "queue", "system")),
+    "sources": ("Provenance: the cited references the pack relies on.", None),
+    "publisher": ("Who published a source.", None),
+    "publishedAt": ("A source's publication date (YYYY-MM-DD).", None),
+    "locator": ("Where a source can be found: a kind and a value.", None),
+    "value": ("An operand or literal. In a fact condition, the value compared with operator (a decimal string for ordered comparisons, an array for `in`); in a literal condition, a boolean; in a source locator, the locator string.", None),
+    "citation": ("The specific location and excerpt within a source.", None),
+    "location": ("Where in a source the cited passage appears.", None),
+    "excerpt": ("The quoted passage from a source.", None),
+    "rights": ("Usage or licensing information for a source.", None),
+    "outcomes": ("The possible results of the decision (at least two). Each has an id and a label.", None),
+    "label": ("The human-readable name shown for an outcome.", None),
+    "rules": ("The decision rules (at least one). Each declares a condition and the outcome it selects.", None),
+    "when": ("The condition under which a rule or exception applies.", None),
+    "outcome": ("For a rule, the outcome id selected when its condition holds; for a force-outcome exception, the outcome forced.", None),
+    "onUnknown": ("How to treat a rule or exception whose condition cannot be evaluated.", ("ignore", "escalate")),
+    "evidenceRequirementRefs": ("Evidence requirement ids a rule depends on.", None),
+    "sourceRefs": ("Source ids a rule or exception is grounded in.", None),
+    "rationale": ("Why a rule exists, recorded for human review.", None),
+    "exceptions": ("Overrides that change the ordinary outcome under specific conditions.", None),
+    "effect": ("What an exception does.", ("suppress-rule", "force-outcome", "escalate")),
+    "targetRule": ("The rule id a suppress-rule exception disables.", None),
+    "fallbackOutcome": ("The outcome id used when no rule matches (informative model).", None),
+    "escalation": ("Handoff configuration: when and to whom the decision is escalated. Not itself an outcome.", None),
+    "triggers": ("The situations that cause escalation.", ("not-applicable", "missing-required-evidence", "unknown", "conflict", "no-match")),
+    "target": ("The escalation destination: a kind and a name.", None),
+    "name": ("The name of an escalation target, such as a role or a queue.", None),
+    "message": ("Guidance shown when escalating.", None),
+    "metadata": ("Non-normative bookkeeping: authors, timestamps, license, reviews, required extensions.", None),
+    "authors": ("Who authored the pack.", None),
+    "createdAt": ("When the pack was created (ISO-8601 date-time).", None),
+    "license": ("The pack's license.", None),
+    "requiredExtensions": ("Extension namespaces an implementation must understand to use the pack.", None),
+    "reviews": ("A record of human reviews of the pack.", None),
+    "reviewer": ("Who reviewed the pack.", None),
+    "reviewedAt": ("When a review occurred.", None),
+    "disposition": ("A review's conclusion.", ("approved", "changes-requested", "rejected")),
+    "note": ("A reviewer's note.", None),
+    "extensions": ("Namespaced additional data with reverse-DNS keys; org.judgmentpack.* is reserved.", None),
+    "condition": ("A nested condition, used by the `not` operator.", None),
+    "conditions": ("The list of sub-conditions combined by `all` or `any`.", None),
+    "op": ("The kind of condition.", ("fact", "all", "any", "not", "evidence-present", "literal")),
+    "path": ("A JSON Pointer to the fact a fact-condition reads.", None),
+    "operator": ("The comparison a fact condition applies.", ("equals", "not-equals", "greater-than", "greater-than-or-equal", "less-than", "less-than-or-equal", "in")),
+    "evidenceRequirement": ("The evidence requirement id an evidence-present condition checks.", None),
+}
+
+
+def _key_link(key: str) -> str:
+    display = html.escape(json.dumps(key))
+    if key in KEY_REFERENCE:
+        return f'<a class="jkey" href="#kd-{html.escape(key)}">{display}</a>'
+    return display
+
+
+def _json_scalar(value: object) -> str:
+    if isinstance(value, bool):
+        return '<span class="jbool">' + ("true" if value else "false") + "</span>"
+    if value is None:
+        return '<span class="jnull">null</span>'
+    if isinstance(value, (int, float)):
+        return '<span class="jnum">' + html.escape(json.dumps(value)) + "</span>"
+    if isinstance(value, str):
+        return '<span class="jstr">' + html.escape(json.dumps(value)) + "</span>"
+    return html.escape(json.dumps(value))
+
+
+def _annotate(value: object, indent: int) -> str:
+    pad = "  " * indent
+    pad1 = "  " * (indent + 1)
+    if isinstance(value, dict):
+        if not value:
+            return "{}"
+        items = list(value.items())
+        rows = [
+            pad1 + _key_link(k) + ": " + _annotate(v, indent + 1) + ("," if i < len(items) - 1 else "")
+            for i, (k, v) in enumerate(items)
+        ]
+        return "{\n" + "\n".join(rows) + "\n" + pad + "}"
+    if isinstance(value, list):
+        if not value:
+            return "[]"
+        rows = [
+            pad1 + _annotate(v, indent + 1) + ("," if i < len(value) - 1 else "")
+            for i, v in enumerate(value)
+        ]
+        return "[\n" + "\n".join(rows) + "\n" + pad + "]"
+    return _json_scalar(value)
+
+
+def _keydef_cards(current: PurePosixPath) -> str:
+    parts = [
+        '<p class="kd-hint">Click a highlighted key in the document to see what it means and its '
+        "allowed values.</p>"
+    ]
+    for key, (summary, values) in KEY_REFERENCE.items():
+        vals = ""
+        if values:
+            chips = " ".join("<code>" + html.escape(v) + "</code>" for v in values)
+            vals = '<p class="kd-values"><span>One of:</span> ' + chips + "</p>"
+        parts.append(
+            '<div class="keydef" id="kd-' + html.escape(key) + '">'
+            + "<h4><code>" + html.escape(key) + "</code></h4>"
+            + "<p>" + html.escape(summary) + "</p>" + vals + "</div>"
+        )
+    guide = output_href(current, PurePosixPath("field-guide/index.html"))
+    parts.append(
+        '<p class="kd-more"><a href="' + html.escape(guide) + '">Full field guide &rarr;</a></p>'
+    )
+    return '<aside class="keydefs" aria-label="Key reference">' + "".join(parts) + "</aside>"
+
+
+def annotated_json_block(value: object, current: PurePosixPath) -> str:
+    """A JSON code block whose keys link to a side panel of schema definitions (no JavaScript)."""
+    code = (
+        '<div class="code-frame annotated-frame"><pre tabindex="0">'
+        '<code class="language-json">' + _annotate(value, 0) + "</code></pre></div>"
+    )
+    return '<div class="annotated-json">' + code + _keydef_cards(current) + "</div>"
+
+
+def field_reference_html() -> str:
+    """The full key reference as a definition list, for the schema page."""
+    rows = []
+    for key, (summary, values) in KEY_REFERENCE.items():
+        vals = ""
+        if values:
+            chips = " ".join("<code>" + html.escape(v) + "</code>" for v in values)
+            vals = ' <span class="kd-values">One of: ' + chips + "</span>"
+        rows.append(
+            "<div><dt><code>" + html.escape(key) + "</code></dt><dd>"
+            + html.escape(summary) + vals + "</dd></div>"
+        )
+    return '<dl class="field-reference">' + "".join(rows) + "</dl>"
+
+
 def tag(text: str, kind: str = "neutral") -> str:
     return f'<span class="tag tag-{html.escape(kind)}">{html.escape(text)}</span>'
 
@@ -871,6 +1031,10 @@ or operational fitness.</div>
   <div><dt>Definitions</dt><dd>{len(definitions)}</dd></div>
 </dl>
 <p>{source_link(page_output, source)}</p>
+<h2 id="field-reference">Field reference</h2>
+<p>Every field and its allowed values, generated from the schema. The same definitions appear as
+clickable cards beside each example document.</p>
+{field_reference_html()}
 <h2 id="raw-schema">Raw schema</h2>
 {raw_block(raw)}
 """
@@ -952,8 +1116,10 @@ not assert a portable evaluator result.</p>
 schema-shape failure, and a dangling local reference fail at different document-conformance layers.
 Missing evidence, unknown facts, conflicts, and no-match handling belong to the informative
 resolution experiment because JPS 0.1.0-draft defines no evaluator conformance class.</div>
-<h2 id="document">Document</h2>
-{raw_block(raw)}
+<h2 id="document">Annotated document</h2>
+<p>The complete validated pack. Each highlighted key links to its definition on the right — click a
+key to see what it means and its allowed values.</p>
+{annotated_json_block(value, detail_output)}
 """
         rendered = page_html(
             output=detail_output,

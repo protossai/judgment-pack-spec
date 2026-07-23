@@ -495,5 +495,24 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn("supplier-invoice-approval/", index)
 
 
+    def test_example_json_keys_link_to_definition_cards(self) -> None:
+        page = self.output / "examples" / "supplier-invoice-approval" / "index.html"
+        detail = page.read_text(encoding="utf-8")
+        for key in ("op", "operator", "when", "outcome", "onUnknown", "effect"):
+            self.assertIn(f'<a class="jkey" href="#kd-{key}">', detail)
+            self.assertIn(f'<div class="keydef" id="kd-{key}">', detail)
+        # Cards carry allowed values pulled from the schema.
+        self.assertIn("greater-than", detail)
+        self.assertIn("evidence-present", detail)
+        # Fully JS-free: script-src 'none' stays intact.
+        self.assertEqual(inspect(page).scripts, 0)
+
+    def test_schema_page_has_a_field_reference(self) -> None:
+        schema = (self.output / "schema" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<dl class="field-reference">', schema)
+        self.assertIn("<dt><code>op</code></dt>", schema)
+        self.assertIn("<dt><code>operator</code></dt>", schema)
+
+
 if __name__ == "__main__":
     unittest.main()
