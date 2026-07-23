@@ -58,11 +58,10 @@ def validate(tag: str, commit: str) -> str:
     if schema.get("properties", {}).get("specVersion", {}).get("const") != version:
         raise ValueError("release tag does not match the schema specVersion constant")
     expected_schema_id = (
-        "https://raw.githubusercontent.com/protossai/judgment-pack-spec/"
-        f"{tag}/schema/judgment-pack-core.schema.json"
+        f"https://judgmentpack.org/schema/{version}/judgment-pack-core.schema.json"
     )
     if schema.get("$id") != expected_schema_id:
-        raise ValueError("schema $id does not point at the exact release tag")
+        raise ValueError("schema $id does not point at the exact release version")
     release_notes = ROOT / "releases" / f"{tag}.md"
     if not release_notes.is_file():
         raise ValueError("release notes are missing for the exact tag")

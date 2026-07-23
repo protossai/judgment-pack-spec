@@ -16,10 +16,7 @@ SCHEMA_PATH = ROOT / "schema" / "judgment-pack-core.schema.json"
 MANIFEST_PATH = CONFORMANCE / "manifest.json"
 MANIFEST_SCHEMA_PATH = CONFORMANCE / "manifest.schema.json"
 SPEC_VERSION = "0.1.0-draft"
-SCHEMA_ID = (
-    "https://raw.githubusercontent.com/protossai/judgment-pack-spec/"
-    "v0.1.0-draft/schema/judgment-pack-core.schema.json"
-)
+SCHEMA_ID = "https://judgmentpack.org/schema/0.1.0-draft/judgment-pack-core.schema.json"
 
 
 class DuplicateMemberError(ValueError):

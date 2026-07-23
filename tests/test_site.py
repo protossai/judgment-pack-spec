@@ -349,6 +349,24 @@ class StaticSiteTests(unittest.TestCase):
         generator = overview.split('name="generator" content="')[1].split('"')[0]
         self.assertNotIn("protoss", generator.lower())
 
+    def test_schemas_are_served_at_their_canonical_id_path(self) -> None:
+        cases = {
+            "schema/0.1.0-draft/judgment-pack-core.schema.json": ROOT
+            / "schema"
+            / "judgment-pack-core.schema.json",
+            "schema/0.1.0-draft/conformance/manifest.schema.json": ROOT
+            / "conformance"
+            / "manifest.schema.json",
+        }
+        for served, source in cases.items():
+            with self.subTest(served=served):
+                published = self.output / served
+                self.assertTrue(published.is_file(), f"{served} is not served")
+                # Byte-for-byte identical to the source schema, and the $id points here.
+                self.assertEqual(published.read_bytes(), source.read_bytes())
+                schema = json.loads(published.read_text(encoding="utf-8"))
+                self.assertEqual(schema["$id"], f"https://judgmentpack.org/{served}")
+
     def test_noindex_pages_have_no_canonical(self) -> None:
         not_found = (self.output / "404.html").read_text(encoding="utf-8")
         self.assertNotIn('rel="canonical"', not_found)

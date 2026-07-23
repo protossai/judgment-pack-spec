@@ -1231,6 +1231,25 @@ def build_not_found(output_root: Path) -> None:
     write_page(output_root, page_output, rendered)
 
 
+CANONICAL_SCHEMA_SOURCES = (
+    "schema/judgment-pack-core.schema.json",
+    "conformance/manifest.schema.json",
+)
+
+
+def publish_canonical_schemas(output_root: Path) -> None:
+    """Serve each schema at the path of its own ``$id`` so the identifier resolves."""
+    for source in CANONICAL_SCHEMA_SOURCES:
+        file = ROOT / source
+        schema_id = json.loads(file.read_text(encoding="utf-8")).get("$id", "")
+        path = urlsplit(schema_id).path.lstrip("/")
+        if not path:
+            raise ValueError(f"{source} has no $id path to publish at")
+        destination = output_root / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(file.read_bytes())
+
+
 def build_implementations_index(output_root: Path) -> None:
     page_output = PurePosixPath("implementations/index.html")
     cli_href = output_href(page_output, PurePosixPath("cli/index.html"))
@@ -1282,6 +1301,7 @@ def build(output: Path, config: BuildConfig) -> None:
     prepare_output(output)
     copy_static(output)
     copy_artifacts(output)
+    publish_canonical_schemas(output)
     build_markdown_pages(output, routes)
     build_schema_page(output, routes)
     build_examples(output, routes)
